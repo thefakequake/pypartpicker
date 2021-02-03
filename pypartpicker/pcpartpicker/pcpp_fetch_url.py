@@ -1,3 +1,3 @@
-class fetch_url:
+class FetchURL:
     def __init__(self):
         pass
