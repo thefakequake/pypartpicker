@@ -1,1 +1,1 @@
-from .pcpp_fetch_url import format_url
+from .pcpp_fetch_url import fetch_parts
