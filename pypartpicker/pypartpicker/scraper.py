@@ -82,6 +82,8 @@ def fetch_list(list_url):
 
 def product_search(search_term, **kwargs):
 
+    search_term = search_term.replace(' ', '+')
+
     # makes sure limit is an integer, raises ValueError if it's not
     if not isinstance(kwargs.get("limit", 20), int):
         raise ValueError("Product limit must be an integer!")
@@ -103,8 +105,36 @@ def product_search(search_term, **kwargs):
         # raises an exception if the region is invalid
         raise ValueError("Invalid region! Max retries exceeded with URL.")
 
+    # checks if the page redirects to a product page
     if soup.find(class_="pageTitle").get_text() != "Product Search":
-        return
+
+        # creates a part object with the information from the product page
+        part_object = Part(
+            name = soup.find(class_="pageTitle").get_text(),
+            url = search_link,
+            price = None
+        )
+
+        # searches for the pricing table
+        table = soup.find("table", class_="xs-col-12")
+
+        # loops through every row in the table
+        for row in table.find_all("tr"):
+
+            # first conditional statement makes sure its not the top row with the table parameters, second checks if the product is out of stock
+            if not "td__availability" in str(row) or "Out of stock" in row.find(class_="td__availability").get_text():
+
+                # skips this iteration
+                continue
+
+            # sets the price of the price object to the price
+            part_object.price = row.find(class_="td__finalPrice").get_text().strip('\n').strip("+")
+
+            # ends the loop
+            break
+
+        # returns the part object
+        return [part_object]
 
     # gets the section of the website's code with the search results
     section = soup.find("section", class_="search-results__pageContent")
