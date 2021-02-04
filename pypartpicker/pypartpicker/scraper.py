@@ -9,6 +9,7 @@ class Part:
         self.url = kwargs.get("url")
         self.type = kwargs.get("type")
         self.price = kwargs.get("price")
+        self.image = kwargs.get("image")
 
 class PCPPList:
 
@@ -16,6 +17,9 @@ class PCPPList:
         self.parts = kwargs.get("parts")
         self.wattage = kwargs.get("wattage")
         self.total = kwargs.get("total")
+        self.url = kwargs.get("url")
+        self.compatibility = kwargs.get("compatibility")
+
 
 def make_soup(url):
     page = requests.get(url)
@@ -47,4 +51,6 @@ def fetch_parts(list_url):
         parts.append(part_object)
     wattage = soup.find(class_="partlist__keyMetric").get_text().replace("Estimated Wattage:", "").strip('\n')
     total_cost = table.find("tr", class_="tr__total tr__total--final").find(class_="td__price").get_text()
-    return PCPPList(parts=parts, wattage=wattage, total=total_cost)
+    compatibilitynotes = [a.get_text().strip('\n').replace("Note:", "").replace("Warning!", "") for a in soup.find_all("li", class_=["info-message", "warning-message"])]
+
+    return PCPPList(parts=parts, wattage=wattage, total=total_cost, url=list_url, compatibility=compatibilitynotes)
