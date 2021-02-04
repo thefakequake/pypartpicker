@@ -32,7 +32,7 @@ def make_soup(url):
     return soup
 
 
-def fetch_parts(list_url):
+def fetch_list(list_url):
 
     # checks if its a pcpartpicker list and raises an exception if its not or if the list is empty
     if not "pcpartpicker.com/list/" in list_url or list_url.endswith("/list/"):
@@ -103,6 +103,9 @@ def product_search(search_term, **kwargs):
         # raises an exception if the region is invalid
         raise ValueError("Invalid region! Max retries exceeded with URL.")
 
+    if soup.find(class_="pageTitle").get_text() != "Product Search":
+        return
+
     # gets the section of the website's code with the search results
     section = soup.find("section", class_="search-results__pageContent")
 
@@ -115,9 +118,13 @@ def product_search(search_term, **kwargs):
         part_object = Part(
             name = product.find("p", class_="search_results--link").get_text().strip(),
             url = product.find("p", class_="search_results--link").find("a", href=True)["href"],
-            price = product.find(class_="product__link product__link--price").get_text(),
             image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
         )
+        try:
+            part_object.price = product.find(class_="product__link product__link--price").get_text()
+        except AttributeError:
+            part_object.price = None
+
         # adds the part object to the list
         parts.append(part_object)
 
