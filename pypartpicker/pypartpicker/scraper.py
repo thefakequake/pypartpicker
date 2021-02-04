@@ -23,7 +23,7 @@ class PCPPList:
         self.compatibility = kwargs.get("compatibility")
 
 
-def make_soup(url):
+def make_soup(url) -> bs4.BeautifulSoup:
     # sends a request to the URL
     page = requests.get(url)
     # gets the HTML code for the website and parses it using Python's built in HTML parser
@@ -32,7 +32,7 @@ def make_soup(url):
     return soup
 
 
-def fetch_list(list_url):
+def fetch_list(list_url) -> PCPPList:
 
     # checks if its a pcpartpicker list and raises an exception if its not or if the list is empty
     if not "pcpartpicker.com/list/" in list_url or list_url.endswith("/list/"):
@@ -80,7 +80,7 @@ def fetch_list(list_url):
 
 
 
-def product_search(search_term, **kwargs):
+def product_search(search_term, **kwargs) -> Part:
 
     search_term = search_term.replace(' ', '+')
 
