@@ -33,7 +33,7 @@ def make_soup(url):
 def fetch_parts(list_url):
 
     # checks if its a pcpartpicker list and raises an exception if its not or if the list is empty
-    if not "pcpartpicker.com/list/" in list_url or list.url.endswith("/list/"):
+    if not "pcpartpicker.com/list/" in list_url or list_url.endswith("/list/"):
         raise Exception(f"'{list_url}' is an invalid PCPartPicker list!")
 
     # fetches the HTML code for the website
@@ -74,3 +74,42 @@ def fetch_parts(list_url):
 
     # returns a PCPPList object containing all the information
     return PCPPList(parts=parts, wattage=wattage, total=total_cost, url=list_url, compatibility=compatibilitynotes)
+
+
+
+def search(search_term, **kwargs):
+
+    # makes sure limit is an integer, raises ValueError if it's not
+    if not isinstance(kwargs.get("limit", 20), int):
+        raise ValueError("Product limit must be an integer!")
+
+    # checks if the region given is a string, and checks if it is a country code
+    if not isinstance(kwargs.get("region", "us"), str) or len(kwargs.get("region", "us")) != 2:
+        raise ValueError("Invalid region!")
+
+    # constructs the search URL
+    if kwargs.get("region") is None:
+        search_link = f"https://pcpartpicker.com/search/?q={search_term}"
+    else:
+        search_link = f"https://{kwargs.get('region', '')}.pcpartpicker.com/search/?q={search_term}"
+
+    try:
+        # fetches the HTML code for the website
+        soup = make_soup(search_link)
+    except requests.exceptions.ConnectionError:
+        # raises an exception if the region is invalid
+        raise ValueError("Invalid region! Max retries exceeded with URL.")
+
+    section = soup.find("section", class_="search-results__pageContent")
+
+    parts = []
+
+    for product in section.find_all("ul", class_="list-unstyled"):
+        part_object = Part(
+            name = product.find("p", class_="search_results--link").get_text().strip(),
+            url = product.find("p", class_="search_results--link").find("a", href=True)["href"],
+            price = product.find(class_="product__link product__link--price").get_text(),
+            image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
+        )
+        parts.append(part_object)
+    return parts
