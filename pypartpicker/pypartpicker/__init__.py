@@ -1,1 +1,1 @@
-from .scraper import fetch_parts, search
+from .scraper import fetch_parts, product_search

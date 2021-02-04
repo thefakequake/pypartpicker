@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
+
 class Part:
 
     def __init__(self, **kwargs):
@@ -10,6 +11,7 @@ class Part:
         self.type = kwargs.get("type")
         self.price = kwargs.get("price")
         self.image = kwargs.get("image")
+
 
 class PCPPList:
 
@@ -51,7 +53,8 @@ def fetch_parts(list_url):
         part_object = Part(
             name = item.find(class_="td__name").get_text().strip('\n'),
             price = item.find(class_="td__price").get_text().strip('\n').replace("No Prices Available", "None").replace("Price", "").strip('\n'),
-            type = item.find(class_="td__component").get_text().strip('\n').strip()
+            type = item.find(class_="td__component").get_text().strip('\n').strip(),
+            image = ("https://" + item.find("img", class_="")["src"]).replace("https://https://", "https://")
         )
         # converts string representation of 'None' to NoneType
         if part_object.price == 'None':
@@ -77,7 +80,7 @@ def fetch_parts(list_url):
 
 
 
-def search(search_term, **kwargs):
+def product_search(search_term, **kwargs):
 
     # makes sure limit is an integer, raises ValueError if it's not
     if not isinstance(kwargs.get("limit", 20), int):
@@ -100,16 +103,23 @@ def search(search_term, **kwargs):
         # raises an exception if the region is invalid
         raise ValueError("Invalid region! Max retries exceeded with URL.")
 
+    # gets the section of the website's code with the search results
     section = soup.find("section", class_="search-results__pageContent")
 
+    # creates an empty list for the part objects to be stored in
     parts = []
 
+    # iterates through all the HTML elements that match the given the criteria
     for product in section.find_all("ul", class_="list-unstyled"):
+        # extracts the product data from the HTML code and creates a part object with that information
         part_object = Part(
             name = product.find("p", class_="search_results--link").get_text().strip(),
             url = product.find("p", class_="search_results--link").find("a", href=True)["href"],
             price = product.find(class_="product__link product__link--price").get_text(),
             image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
         )
+        # adds the part object to the list
         parts.append(part_object)
+
+    # returns the part objects
     return parts
