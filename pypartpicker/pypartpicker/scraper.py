@@ -45,8 +45,9 @@ def fetch_parts(list_url):
         if 'href' in str(item.find(class_="td__name")):
             part_object.url = "https://" + urlparse(list_url).netloc + item.find(class_="td__name").find("a")["href"].replace("/placeholder-", "")
         parts.append(part_object)
-
-    return PCPPList(parts=parts)
+    wattage = soup.find(class_="partlist__keyMetric").get_text().replace("Estimated Wattage:", "").strip('\n')
+    total_cost = table.find("tr", class_="tr__total tr__total--final").find(class_="td__price").get_text()
+    return PCPPList(parts=parts, wattage=wattage, total=total_cost)
 
     # for a in soup.find_all(class_='td__name'):
     #     if 'From parametric selection:' in a.get_text():

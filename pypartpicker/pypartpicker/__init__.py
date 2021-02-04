@@ -1,1 +1,1 @@
-from .pcpp_fetch_url import fetch_parts
+from .scraper import fetch_parts
