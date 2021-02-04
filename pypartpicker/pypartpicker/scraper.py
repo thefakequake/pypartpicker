@@ -91,7 +91,7 @@ def product_search(search_term, **kwargs):
         raise ValueError("Invalid region!")
 
     # constructs the search URL
-    if kwargs.get("region") is None:
+    if kwargs.get("region") in ("us", None):
         search_link = f"https://pcpartpicker.com/search/?q={search_term}"
     else:
         search_link = f"https://{kwargs.get('region', '')}.pcpartpicker.com/search/?q={search_term}"
@@ -129,4 +129,4 @@ def product_search(search_term, **kwargs):
         parts.append(part_object)
 
     # returns the part objects
-    return parts
+    return parts[:kwargs.get("limit", 20)]
