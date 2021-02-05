@@ -115,6 +115,7 @@ def fetch_list(list_url) -> PCPPList:
 
 def fetch_product(part_url) -> Product:
 
+    # checks if the URL is invalid
     if not "pcpartpicker.com" in part_url and "/product/" in part_url:
         raise ValueError("Invalid product URL!")
 
@@ -130,12 +131,15 @@ def fetch_product(part_url) -> Product:
     prices = []
     price = None
 
+    # finds the table with the pricing information
     table = soup.find("table", class_="xs-col-12")
     section = table.find("tbody")
 
     for row in section.find_all("tr"):
+        # skip over empty row
         if "tr--noBorder" in str(row):
             continue
+        # creates a Price object with all the information
         price_object = Price(
             value = row.find(class_="td__finalPrice").get_text().strip('\n'),
             seller = row.find(class_="td__logo").find("img")["alt"],
@@ -144,27 +148,33 @@ def fetch_product(part_url) -> Product:
             url = "https://" + urlparse(part_url).netloc + row.find(class_="td__finalPrice").find("a")["href"],
             in_stock = True if "In stock" in row.find(class_="td__availability").get_text() else False
         )
+        # chceks if its the cheapest in stock price
         if price is None and "In stock" in row.find(class_="td__availability").get_text():
             price = row.find(class_="td__finalPrice").get_text().strip('\n')
         prices.append(price_object)
 
+    # adds spec keys and values to the specs dictionary
     for spec in specs_block.find_all("div", class_="group group--spec"):
         specs[spec.find("h3", class_="group__title").get_text()] = spec.find("div", class_="group__content").get_text().strip().strip('\n').replace("\u00b3", '').replace('\"', '').split('\n')
 
     reviews = None
 
+    # gets the HTML code for the box containing reviews
     review_box = soup.find(class_="block partReviews")
 
+    # skips over this process if the review box does not exist
     if review_box != None:
 
         reviews = []
 
+        # counts stars in reviews
         for review in review_box.find_all(class_="partReviews__review"):
             stars = 0
             for star in review.find(class_="product--rating list-unstyled").find_all("li"):
                 if ' '.join(star.find("svg")["class"]) == "icon shape-star-full":
                     stars += 1
 
+            # gets the upvotes and timestamp
             iterations = 0
             for info in review.find(class_="userDetails__userData list-unstyled").find_all("li"):
                 if iterations == 0:
@@ -176,7 +186,7 @@ def fetch_product(part_url) -> Product:
                 iterations += 1
 
 
-
+            # creates review object with all the information
             review_object = Review(
                 author = review.find(class_="userDetails__userName").get_text(),
                 author_url = "https://" + urlparse(part_url).netloc + review.find(class_="userDetails__userName")["href"],
@@ -190,14 +200,17 @@ def fetch_product(part_url) -> Product:
             reviews.append(review_object)
 
     compatible_parts = None
+    # fetches section with compatible parts hyperlinks
     compatible_parts_list = soup.find(class_="compatibleParts__list list-unstyled")
     if compatible_parts_list != None:
         compatible_parts = []
+        # finds every list item in the section
         for item in compatible_parts_list.find_all("li"):
             compatible_parts.append((
                 item.find("a").get_text(), "https://" + urlparse(part_url).netloc + item.find("a")["href"]
             ))
 
+    # creates the product object to return
     product_object = Product(
         name = soup.find(class_="pageTitle").get_text(),
         url = part_url,
@@ -214,6 +227,7 @@ def fetch_product(part_url) -> Product:
     image_box = soup.find(class_="single_image_gallery_box")
 
     if image_box != None:
+        # adds image to object if it finds one
         product_object.image = image_box.find("img")["src"].replace("https://https://", "https://")
 
     return product_object
