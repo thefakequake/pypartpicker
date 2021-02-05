@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: pypartpicker
-Version: 0.post0
+Version: 0.6
 Summary: A package that scrapes pcpartpicker.com and returns the results as objects.
 Home-page: https://github.com/QuaKe8782/pypartpicker
 Author-email: mastermind4560@gmail.com
 License: UNKNOWN
-Download-URL: https://github.com/QuaKe8782/pypartpicker/archive/0.4.tar.gz
+Download-URL: https://github.com/QuaKe8782/pypartpicker/archive/0.6.tar.gz
 Description: # PyPartPicker
         
         #### PyPartPicker is a package that allows you to obtain information from PCPartPicker quickly and easily, with data being returned via objects with numerous attributes.
@@ -174,7 +174,7 @@ Description: # PyPartPicker
         - `content` - The text content of the review
 Keywords: pcpartpicker,scraper,list,beautifulsoup,pc,parts
 Platform: UNKNOWN
-Classifier: Development Status :: 4 - Beta
+Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Build Tools
 Classifier: License :: OSI Approved :: MIT License

@@ -1,6 +1,7 @@
 *__pycache__
-*setup.cfg
 *.gitignore
 *Scripts
 *Lib
 *Include
+*example.py
+*pyvenv.cfg
