@@ -29,6 +29,7 @@ class Product(Part):
         self.price_list = kwargs.get("price_list")
         self.rating = kwargs.get("rating")
         self.reviews = kwargs.get("reviews")
+        self.compatible_parts = kwargs.get("compatible_parts")
 
 class Price:
 
@@ -188,6 +189,15 @@ def fetch_product(part_url) -> Product:
 
             reviews.append(review_object)
 
+    compatible_parts = None
+    compatible_parts_list = soup.find(class_="compatibleParts__list list-unstyled")
+    if compatible_parts_list != None:
+        compatible_parts = []
+        for item in compatible_parts_list.find_all("li"):
+            compatible_parts.append((
+                item.find("a").get_text(), "https://" + urlparse(part_url).netloc + item.find("a")["href"]
+            ))
+
     product_object = Product(
         name = soup.find(class_="pageTitle").get_text(),
         url = part_url,
@@ -195,8 +205,10 @@ def fetch_product(part_url) -> Product:
         specs = specs,
         price_list = prices,
         price = price,
-        rating = soup.find(class_="product--rating list-unstyled").get_text().strip('\n').strip().strip("()"),
-        reviews = reviews
+        rating = soup.find(class_="actionBox actionBox__ratings").find(class_="product--rating list-unstyled").get_text().strip('\n').strip().strip("()"),
+        reviews = reviews,
+        compatible_parts = compatible_parts,
+        type = soup.find(class_="breadcrumb").find(class_="list-unstyled").find("li").get_text()
     )
 
     image_box = soup.find(class_="single_image_gallery_box")
