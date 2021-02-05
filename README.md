@@ -183,3 +183,14 @@ ___
 - `created_at` - How long ago the review was sent
 - `rating` - The star rating out of 5 of the product that the review gives
 - `content` - The text content of the review
+
+---
+
+## PCPPList
+### Attributes
+
+- `parts` - List of Part objects corresponding to every part in the list
+- `wattage` - The estimated wattage for the parts in the list
+- `total` - The total price of the PCPartPicker list
+- `url` - The URL of the PCPartPicker list
+- `compatibility` - A list containing the compatibility notes for the parts list
