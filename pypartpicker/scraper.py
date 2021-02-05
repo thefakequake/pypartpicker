@@ -232,6 +232,9 @@ def product_search(search_term, **kwargs) -> Part:
     if not isinstance(kwargs.get("region", "us"), str) or len(kwargs.get("region", "us")) != 2:
         raise ValueError("Invalid region!")
 
+    if kwargs.get("limit", 20) < 0:
+        raise ValueError("Limit out of range.")
+
     # constructs the search URL
     if kwargs.get("region") in ("us", None):
         search_link = f"https://pcpartpicker.com/search/?q={search_term}"
