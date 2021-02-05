@@ -9,6 +9,7 @@ setup(name='pypartpicker',
       author_email='mastermind4560@gmail.com',
       install_requires=['bs4', 'requests'],
       zip_safe=False,
+      download_url = "https://github.com/QuaKe8782/pypartpicker/archive/0.2.tar.gz",
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',

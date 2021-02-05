@@ -1,8 +1,8 @@
-from pypartpicker.pypartpicker import product_search, fetch_list, fetch_product
+from pypartpicker import product_search, fetch_list, fetch_product
 
-product = fetch_product("https://pcpartpicker.com/product/crqBD3/phanteks-eclipse-p300a-mesh-atx-mid-tower-case-ph-ec300atg_bk01")
+parts = product_search("i3 10100f", region="uk", limit=-2)
+print(parts)
 
-print(product.rating)
 
 
 
