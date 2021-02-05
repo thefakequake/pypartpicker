@@ -114,6 +114,9 @@ def fetch_list(list_url) -> PCPPList:
 
 def fetch_product(part_url) -> Product:
 
+    if not "pcpartpicker.com" in part_url and "/product/" in part_url:
+        raise ValueError("Invalid product URL!")
+
     try:
         soup = make_soup(part_url)
     except requests.exceptions.ConnectionError:
@@ -124,6 +127,7 @@ def fetch_product(part_url) -> Product:
 
     specs = {}
     prices = []
+    price = None
 
     table = soup.find("table", class_="xs-col-12")
     section = table.find("tbody")
@@ -139,43 +143,50 @@ def fetch_product(part_url) -> Product:
             url = "https://" + urlparse(part_url).netloc + row.find(class_="td__finalPrice").find("a")["href"],
             in_stock = True if "In stock" in row.find(class_="td__availability").get_text() else False
         )
+        if price is None and "In stock" in row.find(class_="td__availability").get_text():
+            price = price_object
         prices.append(price_object)
 
     for spec in specs_block.find_all("div", class_="group group--spec"):
         specs[spec.find("h3", class_="group__title").get_text()] = spec.find("div", class_="group__content").get_text().strip().strip('\n').replace("\u00b3", '').replace('\"', '').split('\n')
 
+    reviews = None
+
     review_box = soup.find(class_="block partReviews")
-    reviews = []
 
-    for review in review_box.find_all(class_="partReviews__review"):
-        stars = 0
-        for star in review.find(class_="product--rating list-unstyled").find_all("li"):
-            if ' '.join(star.find("svg")["class"]) == "icon shape-star-full":
-                stars += 1
+    if review_box != None:
 
-        iterations = 0
-        for info in review.find(class_="userDetails__userData list-unstyled").find_all("li"):
-            if iterations == 0:
-                points = info.get_text().replace(" points", '').replace(" point", '')
-            elif iterations == 1:
-                posted_ago = info.get_text().replace(" ago", '')
-            else:
-                break
-            iterations += 1
+        reviews = []
+
+        for review in review_box.find_all(class_="partReviews__review"):
+            stars = 0
+            for star in review.find(class_="product--rating list-unstyled").find_all("li"):
+                if ' '.join(star.find("svg")["class"]) == "icon shape-star-full":
+                    stars += 1
+
+            iterations = 0
+            for info in review.find(class_="userDetails__userData list-unstyled").find_all("li"):
+                if iterations == 0:
+                    points = info.get_text().replace(" points", '').replace(" point", '')
+                elif iterations == 1:
+                    posted_ago = info.get_text().replace(" ago", '')
+                else:
+                    break
+                iterations += 1
 
 
 
-        review_object = Review(
-            author = review.find(class_="userDetails__userName").get_text(),
-            author_url = "https://" + urlparse(part_url).netloc + review.find(class_="userDetails__userName")["href"],
-            author_icon = "https://" + urlparse(part_url).netloc + review.find(class_="userAvatar userAvatar--entry").find("img")["src"],
-            content = review.find(class_="partReviews__writeup markdown").get_text(),
-            rating = stars,
-            points = points,
-            posted_ago = posted_ago
-        )
+            review_object = Review(
+                author = review.find(class_="userDetails__userName").get_text(),
+                author_url = "https://" + urlparse(part_url).netloc + review.find(class_="userDetails__userName")["href"],
+                author_icon = "https://" + urlparse(part_url).netloc + review.find(class_="userAvatar userAvatar--entry").find("img")["src"],
+                content = review.find(class_="partReviews__writeup markdown").get_text(),
+                rating = stars,
+                points = points,
+                posted_ago = posted_ago
+            )
 
-        reviews.append(review_object)
+            reviews.append(review_object)
 
     product_object = Product(
         name = soup.find(class_="pageTitle").get_text(),
@@ -183,6 +194,7 @@ def fetch_product(part_url) -> Product:
         image = None,
         specs = specs,
         price_list = prices,
+        price = price,
         rating = soup.find(class_="product--rating list-unstyled").get_text().strip('\n').strip().strip("()"),
         reviews = reviews
     )
