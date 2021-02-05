@@ -67,7 +67,11 @@ def fetch_list(list_url) -> PCPPList:
         raise Exception(f"'{list_url}' is an invalid PCPartPicker list!")
 
     # fetches the HTML code for the website
-    soup = make_soup(list_url)
+    try:
+        soup = make_soup(list_url)
+    except requests.exceptions.ConnectionError:
+        raise ValueError("Invalid list URL! Max retries exceeded with URL.")
+
 
     # gets the code with the table containing all the parts
     table = soup.find_all("table", {"class": "xs-col-12"}, limit=1)[0]
@@ -109,7 +113,12 @@ def fetch_list(list_url) -> PCPPList:
 
 
 def fetch_product(part_url) -> Product:
-    soup = make_soup(part_url)
+
+    try:
+        soup = make_soup(part_url)
+    except requests.exceptions.ConnectionError:
+        raise ValueError("Invalid product URL! Max retries exceeded with URL.")
+
 
     specs_block = soup.find(class_="block xs-hide md-block specs")
 
