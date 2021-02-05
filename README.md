@@ -1,6 +1,6 @@
 # PyPartPicker
 
-#### PyPartPicker is a package that allows you to obtain information from PCPartPicker quickly and easily, with data being via objects.
+#### PyPartPicker is a package that allows you to obtain information from PCPartPicker quickly and easily, with data being returned via objects with numerous attributes.
 
 ### Features:
 - Obtain Part objects, estimated wattage and total cost from PCPartPicker lists.
