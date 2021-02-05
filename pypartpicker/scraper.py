@@ -220,7 +220,7 @@ def fetch_product(part_url) -> Product:
 
 
 
-def product_search(search_term, **kwargs) -> Part:
+def part_search(search_term, **kwargs) -> Part:
 
     search_term = search_term.replace(' ', '+')
 
@@ -290,7 +290,7 @@ def product_search(search_term, **kwargs) -> Part:
         # extracts the product data from the HTML code and creates a part object with that information
         part_object = Part(
             name = product.find("p", class_="search_results--link").get_text().strip(),
-            url = "https://" + urlparse(part_url).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
+            url = "https://" + urlparse(search_link).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
             image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
         )
         try:
