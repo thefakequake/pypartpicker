@@ -92,6 +92,7 @@ for part in parts:
   
 
 - **region** (Optional[ [str](https://docs.python.org/3/library/stdtypes.html#str) ]) - The country code of which you want the pricing for the Part objects to be in. 
+    
     Example: `region="uk"`
   
 ### Returns
