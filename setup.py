@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as readme:
     long_description = readme.read()
 
 setup(name='pypartpicker',
-      version='0.4',
+      version='0.5',
       description='A package that scrapes pcpartpicker.com and returns the results as objects.',
       packages=['pypartpicker'],
       url='https://github.com/QuaKe8782/pypartpicker',
@@ -12,11 +12,11 @@ setup(name='pypartpicker',
       author_email='mastermind4560@gmail.com',
       install_requires=['bs4', 'requests'],
       zip_safe=False,
-      download_url = "https://github.com/QuaKe8782/pypartpicker/archive/0.4.tar.gz",
+      download_url = "https://github.com/QuaKe8782/pypartpicker/archive/0.5.tar.gz",
       long_description=long_description,
       long_description_content_type="text/markdown",
       classifiers=[
-          'Development Status :: 5 - Production/Stable',
+          'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
           'Topic :: Software Development :: Build Tools',
           'License :: OSI Approved :: MIT License',

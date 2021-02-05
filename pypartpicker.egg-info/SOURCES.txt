@@ -1,0 +1,11 @@
+README.md
+setup.cfg
+setup.py
+pypartpicker/__init__.py
+pypartpicker/scraper.py
+pypartpicker.egg-info/PKG-INFO
+pypartpicker.egg-info/SOURCES.txt
+pypartpicker.egg-info/dependency_links.txt
+pypartpicker.egg-info/not-zip-safe
+pypartpicker.egg-info/requires.txt
+pypartpicker.egg-info/top_level.txt
