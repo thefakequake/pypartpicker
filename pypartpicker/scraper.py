@@ -145,7 +145,7 @@ def fetch_product(part_url) -> Product:
             in_stock = True if "In stock" in row.find(class_="td__availability").get_text() else False
         )
         if price is None and "In stock" in row.find(class_="td__availability").get_text():
-            price = price_object
+            price = row.find(class_="td__finalPrice").get_text().strip('\n')
         prices.append(price_object)
 
     for spec in specs_block.find_all("div", class_="group group--spec"):
@@ -290,7 +290,7 @@ def product_search(search_term, **kwargs) -> Part:
         # extracts the product data from the HTML code and creates a part object with that information
         part_object = Part(
             name = product.find("p", class_="search_results--link").get_text().strip(),
-            url = product.find("p", class_="search_results--link").find("a", href=True)["href"],
+            url = "https://" + urlparse(part_url).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
             image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
         )
         try:
