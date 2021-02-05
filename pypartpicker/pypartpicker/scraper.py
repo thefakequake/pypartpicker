@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
-
 class Part:
 
     def __init__(self, **kwargs):
@@ -22,8 +21,37 @@ class PCPPList:
         self.url = kwargs.get("url")
         self.compatibility = kwargs.get("compatibility")
 
+class Product(Part):
 
-def make_soup(url) -> bs4.BeautifulSoup:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.specs = kwargs.get("specs")
+        self.price_list = kwargs.get("price_list")
+        self.rating = kwargs.get("rating")
+        self.reviews = kwargs.get("reviews")
+
+class Price:
+
+    def __init__(self, **kwargs):
+        self.value = kwargs.get("value")
+        self.seller = kwargs.get("seller")
+        self.seller_icon = kwargs.get("seller_icon")
+        self.url = kwargs.get("url")
+        self.base_value = kwargs.get("base_value")
+        self.in_stock = kwargs.get("in_stock")
+
+class Review:
+
+    def __init__(self, **kwargs):
+        self.author = kwargs.get("author")
+        self.author_url = kwargs.get("author_url")
+        self.author_icon = kwargs.get("author_icon")
+        self.points = kwargs.get("points")
+        self.posted_ago = kwargs.get("posted_ago")
+        self.rating = kwargs.get("rating")
+        self.content = kwargs.get("content")
+
+def make_soup(url) -> BeautifulSoup:
     # sends a request to the URL
     page = requests.get(url)
     # gets the HTML code for the website and parses it using Python's built in HTML parser
@@ -77,6 +105,85 @@ def fetch_list(list_url) -> PCPPList:
 
     # returns a PCPPList object containing all the information
     return PCPPList(parts=parts, wattage=wattage, total=total_cost, url=list_url, compatibility=compatibilitynotes)
+
+
+
+def fetch_product(part_url) -> Product:
+    soup = make_soup(part_url)
+
+    specs_block = soup.find(class_="block xs-hide md-block specs")
+
+    specs = {}
+    prices = []
+
+    table = soup.find("table", class_="xs-col-12")
+    section = table.find("tbody")
+
+    for row in section.find_all("tr"):
+        if "tr--noBorder" in str(row):
+            continue
+        price_object = Price(
+            value = row.find(class_="td__finalPrice").get_text().strip('\n'),
+            seller = row.find(class_="td__logo").find("img")["alt"],
+            seller_icon = ("https://" + row.find(class_="td__logo").find("img")["src"][1:]).replace("https://https://", "https://"),
+            base_value = row.find(class_="td__base priority--2").get_text(),
+            url = "https://" + urlparse(part_url).netloc + row.find(class_="td__finalPrice").find("a")["href"],
+            in_stock = True if "In stock" in row.find(class_="td__availability").get_text() else False
+        )
+        prices.append(price_object)
+
+    for spec in specs_block.find_all("div", class_="group group--spec"):
+        specs[spec.find("h3", class_="group__title").get_text()] = spec.find("div", class_="group__content").get_text().strip().strip('\n').replace("\u00b3", '').replace('\"', '').split('\n')
+
+    review_box = soup.find(class_="block partReviews")
+    reviews = []
+
+    for review in review_box.find_all(class_="partReviews__review"):
+        stars = 0
+        for star in review.find(class_="product--rating list-unstyled").find_all("li"):
+            if ' '.join(star.find("svg")["class"]) == "icon shape-star-full":
+                stars += 1
+
+        iterations = 0
+        for info in review.find(class_="userDetails__userData list-unstyled").find_all("li"):
+            if iterations == 0:
+                points = info.get_text().replace(" points", '').replace(" point", '')
+            elif iterations == 1:
+                posted_ago = info.get_text().replace(" ago", '')
+            else:
+                break
+            iterations += 1
+
+
+
+        review_object = Review(
+            author = review.find(class_="userDetails__userName").get_text(),
+            author_url = "https://" + urlparse(part_url).netloc + review.find(class_="userDetails__userName")["href"],
+            author_icon = "https://" + urlparse(part_url).netloc + review.find(class_="userAvatar userAvatar--entry").find("img")["src"],
+            content = review.find(class_="partReviews__writeup markdown").get_text(),
+            rating = stars,
+            points = points,
+            posted_ago = posted_ago
+        )
+
+        reviews.append(review_object)
+
+    product_object = Product(
+        name = soup.find(class_="pageTitle").get_text(),
+        url = part_url,
+        image = None,
+        specs = specs,
+        price_list = prices,
+        rating = soup.find(class_="product--rating list-unstyled").get_text().strip('\n').strip().strip("()"),
+        reviews = reviews
+    )
+
+    image_box = soup.find(class_="single_image_gallery_box")
+
+    if image_box != None:
+        product_object.image = image_box.find("img")["src"].replace("https://https://", "https://")
+
+    return product_object
 
 
 
