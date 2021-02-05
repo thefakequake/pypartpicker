@@ -1,1 +1,7 @@
 *__pycache__
+*setup.cfg
+*.gitignore
+*Scripts
+*pypartpicker.egg-info
+*Lib
+*Include

@@ -48,7 +48,7 @@ class Review:
         self.author_url = kwargs.get("author_url")
         self.author_icon = kwargs.get("author_icon")
         self.points = kwargs.get("points")
-        self.posted_ago = kwargs.get("posted_ago")
+        self.created_at = kwargs.get("created_at")
         self.rating = kwargs.get("rating")
         self.content = kwargs.get("content")
 
@@ -170,7 +170,7 @@ def fetch_product(part_url) -> Product:
                 if iterations == 0:
                     points = info.get_text().replace(" points", '').replace(" point", '')
                 elif iterations == 1:
-                    posted_ago = info.get_text().replace(" ago", '')
+                    created_at = info.get_text().replace(" ago", '')
                 else:
                     break
                 iterations += 1
@@ -184,7 +184,7 @@ def fetch_product(part_url) -> Product:
                 content = review.find(class_="partReviews__writeup markdown").get_text(),
                 rating = stars,
                 points = points,
-                posted_ago = posted_ago
+                created_at = created_at
             )
 
             reviews.append(review_object)
