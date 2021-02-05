@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: pypartpicker
-Version: 0.6
+Version: 1.0
 Summary: A package that scrapes pcpartpicker.com and returns the results as objects.
 Home-page: https://github.com/QuaKe8782/pypartpicker
 Author-email: mastermind4560@gmail.com
 License: UNKNOWN
-Download-URL: https://github.com/QuaKe8782/pypartpicker/archive/0.6.tar.gz
+Download-URL: https://github.com/QuaKe8782/pypartpicker/archive/1.0.tar.gz
 Description: # PyPartPicker
         
         #### PyPartPicker is a package that allows you to obtain information from PCPartPicker quickly and easily, with data being returned via objects with numerous attributes.

@@ -8,9 +8,10 @@
 - Obtain name, product URl, price, product type, image and more from Part objects.
 - Obtain everything previously mentioned + specs, reviews and in depth pricing information from PCPartPicker product links
 
----
 
 # Installation
+
+---
 Installation via pip:
 ```
 >>> pip install pypartpicker
@@ -19,8 +20,10 @@ Or clone the repo directly:
 ```
 >>> git clone https://github.com/QuaKe8782/pypartpicker.git
 ```
----
 # Basic programs
+
+---
+
 Here is a program that searches for i7's, prints every result, then gets the first result and prints its specs.
 ```python
 from pypartpicker import part_search, fetch_product
@@ -71,10 +74,11 @@ for part in parts:
     sleep(3)
 ```
 
----
 # Methods
 
-###`part_search(search_term, limit=20, region=None)`
+---
+
+### `part_search(search_term, limit=20, region=None)`
 #### Returns Part objects using PCPartPicker's search function.
 ### **Parameters**
 - **search_term** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The term you want to search for.
@@ -96,7 +100,7 @@ A list of Part objects corresponding to the results on PCPartPicker.
 
 ---
 
-###`fetch_product(product_url)`
+### `fetch_product(product_url)`
 #### Returns a Product object from a PCPartPicker product URL.
 ### **Parameters**
 - **product_url** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The product URL for the product you want to search for.
@@ -107,7 +111,7 @@ A list of Part objects corresponding to the results on PCPartPicker.
 A Product object for the part
 
 ---
-###`fetch_list(list_url)`
+### `fetch_list(list_url)`
 #### Returns a PCPPLIst object from a PCPartPicker list URL.
 ### **Parameters**
 - **list_url** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The URL for the parts list.
@@ -116,6 +120,20 @@ A Product object for the part
 
 ### Returns
 A PCPPList object for the list.
+
+
+# Async Methods
+___
+#### Same syntax as sync functions, but add aio_ to the beginning of the method name and add await before the function call.
+#### For example:
+`results = part_search("i5")`
+
+becomes
+
+`results = await aio_part_search("i5")`
+
+Remember: you can only call async functions within other async functions. If you are not writing async code, do not use these methods. Use the sync methods, which don't have aio_ before their name.
+
 
 # Objects
 

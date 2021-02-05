@@ -1,6 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+import concurrent.futures
+import asyncio
+from functools import partial
 
 class Part:
 
@@ -317,3 +320,23 @@ def part_search(search_term, **kwargs) -> Part:
 
     # returns the part objects
     return parts[:kwargs.get("limit", 20)]
+
+
+async def aio_part_search(search_term, **kwargs):
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await asyncio.get_event_loop().run_in_executor(pool, partial(part_search, search_term, **kwargs))
+    return result
+
+
+async def aio_fetch_list(list_url):
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await asyncio.get_event_loop().run_in_executor(pool, fetch_list, list_url)
+    return result
+
+
+async def aio_fetch_product(part_url):
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await asyncio.get_event_loop().run_in_executor(pool, fetch_product, part_url)
+    return result
+
+
