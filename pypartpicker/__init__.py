@@ -1,2 +1,2 @@
 from .scraper import *
-from .regerx import *
+from .regex import *
