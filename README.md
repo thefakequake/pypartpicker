@@ -134,7 +134,7 @@ A PCPPList object for the list.
 A list of URLs.
 
 ---
-### `get_list_links(string)`
+### `get_product_links(string)`
 #### Returns a list of PCPartPicker product links from the given string.
 ### **Parameters**
 - **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the product URL.
