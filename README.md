@@ -24,7 +24,7 @@ Or clone the repo directly:
 
 ---
 
-Here is a program that searches for i7's, prints every result, then gets the first result and prints its specs.
+Here is a program that searches for i7's, prints every result, then gets the first result and prints its specs:
 ```python
 from pypartpicker import part_search, fetch_product
 
@@ -109,7 +109,7 @@ A list of Part objects corresponding to the results on PCPartPicker.
     Example: `"https://pcpartpicker.com/product/9nm323/amd-ryzen-5-3600-36-thz-6-core-processor-100-100000031box"`
 
 ### Returns
-A Product object for the part
+A Product object for the part.
 
 ---
 ### `fetch_list(list_url)`
@@ -121,6 +121,28 @@ A Product object for the part
 
 ### Returns
 A PCPPList object for the list.
+
+---
+### `get_list_links(string)`
+#### Returns a list of PCPartPicker list links from the given string.
+### **Parameters**
+- **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the parts list URL.
+  
+    Example: `"this function can extract the link from this string https://pcpartpicker.com/list/Tzx22V"`
+
+### Returns
+A list of URLs.
+
+---
+### `get_list_links(string)`
+#### Returns a list of PCPartPicker product links from the given string.
+### **Parameters**
+- **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the product URL.
+  
+    Example: `"this function can extract the link from this string https://pcpartpicker.com/product/9nm323/amd-ryzen-5-3600-36-thz-6-core-processor-100-100000031box"`
+
+### Returns
+A list of URLs.
 
 
 # Async Methods
@@ -135,6 +157,7 @@ becomes
 
 Remember: you can only call async functions within other async functions. If you are not writing async code, do not use these methods. Use the sync methods, which don't have aio_ before their name.
 
+Only the blocking functions (the ones that involve active scraping) have async equivalents.
 
 # Objects
 
