@@ -4,6 +4,9 @@ from urllib.parse import urlparse
 import concurrent.futures
 import asyncio
 from functools import partial
+import math
+import re
+
 
 class Part:
 
@@ -240,16 +243,17 @@ def fetch_product(part_url) -> Product:
 def part_search(search_term, **kwargs) -> Part:
 
     search_term = search_term.replace(' ', '+')
+    limit = kwargs.get("limit", 20)
 
     # makes sure limit is an integer, raises ValueError if it's not
-    if not isinstance(kwargs.get("limit", 20), int):
+    if not isinstance(limit, int):
         raise ValueError("Product limit must be an integer!")
 
     # checks if the region given is a string, and checks if it is a country code
     if not isinstance(kwargs.get("region", "us"), str) or len(kwargs.get("region", "us")) != 2:
         raise ValueError("Invalid region!")
 
-    if kwargs.get("limit", 20) < 0:
+    if limit < 0:
         raise ValueError("Limit out of range.")
 
     # constructs the search URL
@@ -258,68 +262,82 @@ def part_search(search_term, **kwargs) -> Part:
     else:
         search_link = f"https://{kwargs.get('region', '')}.pcpartpicker.com/search/?q={search_term}"
 
-    try:
-        # fetches the HTML code for the website
-        soup = make_soup(search_link)
-    except requests.exceptions.ConnectionError:
-        # raises an exception if the region is invalid
-        raise ValueError("Invalid region! Max retries exceeded with URL.")
-
-    # checks if the page redirects to a product page
-    if soup.find(class_="pageTitle").get_text() != "Product Search":
-
-        # creates a part object with the information from the product page
-        part_object = Part(
-            name = soup.find(class_="pageTitle").get_text(),
-            url = search_link,
-            price = None
-        )
-
-        # searches for the pricing table
-        table = soup.find("table", class_="xs-col-12")
-
-        # loops through every row in the table
-        for row in table.find_all("tr"):
-
-            # first conditional statement makes sure its not the top row with the table parameters, second checks if the product is out of stock
-            if not "td__availability" in str(row) or "Out of stock" in row.find(class_="td__availability").get_text():
-
-                # skips this iteration
-                continue
-
-            # sets the price of the price object to the price
-            part_object.price = row.find(class_="td__finalPrice").get_text().strip('\n').strip("+")
-
-            # ends the loop
-            break
-
-        # returns the part object
-        return [part_object]
-
-    # gets the section of the website's code with the search results
-    section = soup.find("section", class_="search-results__pageContent")
+    iterations = math.ceil(limit/20)
 
     # creates an empty list for the part objects to be stored in
     parts = []
 
-    # iterates through all the HTML elements that match the given the criteria
-    for product in section.find_all("ul", class_="list-unstyled"):
-        # extracts the product data from the HTML code and creates a part object with that information
-        part_object = Part(
-            name = product.find("p", class_="search_results--link").get_text().strip(),
-            url = "https://" + urlparse(search_link).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
-            image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
-        )
-        try:
-            part_object.price = product.find(class_="product__link product__link--price").get_text()
-        except AttributeError:
-            part_object.price = None
+    for i in range(iterations):
 
-        # adds the part object to the list
-        parts.append(part_object)
+        try:
+            soup = make_soup(f"{search_link}&page={i + 1}")
+        except requests.exceptions.ConnectionError:
+            raise ValueError("Invalid region! Max retries exceeded with URL.")
+
+        # checks if the page redirects to a product page
+        if soup.find(class_="pageTitle").get_text() != "Product Search":
+
+            # creates a part object with the information from the product page
+            part_object = Part(
+                name = soup.find(class_="pageTitle").get_text(),
+                url = search_link,
+                price = None
+            )
+
+            # searches for the pricing table
+            table = soup.find("table", class_="xs-col-12")
+
+            # loops through every row in the table
+            for row in table.find_all("tr"):
+
+                # first conditional statement makes sure its not the top row with the table parameters, second checks if the product is out of stock
+                if not "td__availability" in str(row) or "Out of stock" in row.find(class_="td__availability").get_text():
+
+                    # skips this iteration
+                    continue
+
+                # sets the price of the price object to the price
+                part_object.price = row.find(class_="td__finalPrice").get_text().strip('\n').strip("+")
+
+                break
+
+            # returns the part object
+            return [part_object]
+
+        # gets the section of the website's code with the search results
+        section = soup.find("section", class_="search-results__pageContent")
+
+        if "No results" in section.get_text():
+            break
+
+        # iterates through all the HTML elements that match the given the criteria
+        for product in section.find_all("ul", class_="list-unstyled"):
+            # extracts the product data from the HTML code and creates a part object with that information
+            part_object = Part(
+                name = product.find("p", class_="search_results--link").get_text().strip(),
+                url = "https://" + urlparse(search_link).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
+                image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
+            )
+            try:
+                part_object.price = product.find(class_="product__link product__link--price").get_text()
+            except AttributeError:
+                part_object.price = None
+
+            # adds the part object to the list
+            parts.append(part_object)
 
     # returns the part objects
     return parts[:kwargs.get("limit", 20)]
+
+
+def get_list_links(string):
+    list_regex = re.compile("((?:http|https)://(?:[a-z]{2}.pcpartpicker|pcpartpicker).com/list/(?:[a-zA-Z0-9]{6}))")
+    return re.findall(list_regex, string)
+
+
+def get_product_links(string):
+    product_regex = re.compile("((?:http|https)://(?:[a-z]{2}.pcpartpicker|pcpartpicker).com/product/(?:[a-zA-Z0-9]{6}))")
+    return re.findall(product_regex, string)
 
 
 async def aio_part_search(search_term, **kwargs):
