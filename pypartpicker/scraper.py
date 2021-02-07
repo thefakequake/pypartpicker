@@ -274,7 +274,6 @@ def part_search(search_term, **kwargs) -> Part:
 
         try:
             soup = make_soup(f"{search_link}&page={i + 1}")
-            print(soup)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid region! Max retries exceeded with URL.")
 
