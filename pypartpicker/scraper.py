@@ -58,8 +58,12 @@ class Review:
         self.content = kwargs.get("content")
 
 def make_soup(url) -> BeautifulSoup:
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63'
+    }
+
     # sends a request to the URL
-    page = requests.get(url)
+    page = requests.get(url, headers=headers)
     # gets the HTML code for the website and parses it using Python's built in HTML parser
     soup = BeautifulSoup(page.content, 'html.parser')
     # returns the HTML
@@ -270,6 +274,7 @@ def part_search(search_term, **kwargs) -> Part:
 
         try:
             soup = make_soup(f"{search_link}&page={i + 1}")
+            print(soup)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid region! Max retries exceeded with URL.")
 
