@@ -20,16 +20,18 @@ Or clone the repo directly:
 ```
 >>> git clone https://github.com/QuaKe8782/pypartpicker.git
 ```
-# Basic programs
+# Example programs
 
 ---
 
 Here is a program that searches for i7's, prints every result, then gets the first result and prints its specs:
 ```python
-from pypartpicker import part_search, fetch_product
+from pypartpicker import Scraper
 
+# creates the scraper object
+pcpp = Scraper()
 # returns a list of Part objects we can iterate through
-parts = part_search("i7")
+parts = pcpp.part_search("i7")
 
 # iterates through every part object
 for part in parts:
@@ -39,18 +41,19 @@ for part in parts:
 # gets the first product and fetches its URL
 first_product_url = parts[0].url
 # gets the Product object for the item
-product = fetch_product(first_product_url)
+product = pcpp.fetch_product(first_product_url)
 # prints the product's specs using the specs attribute
 print(product.specs)
 ```
 Here is another program that finds i3s that are cheaper than or equal to £110, prints their specs and then prints the first review:
 ```python
-from pypartpicker import part_search, fetch_product
+from pypartpicker import Scraper
 from time import sleep
 
 # returns a list of Part objects we can iterate through
 # the region is set to "uk" so that we get prices in GBP
-parts = part_search("i3", region="uk")
+pcpp = Scraper()
+parts = pcpp.part_search("i3", region="uk")
 
 # iterates through the parts
 for part in parts:
@@ -59,7 +62,7 @@ for part in parts:
         print(f"I found a valid product: {part.name}")
         print(f"Here is the link: {part.url}")
         # gets the product object for the parts
-        product = fetch_product(part.url)
+        product = pcpp.fetch_product(part.url)
         print(product.specs)
         # makes sure the product has reviews
         if product.reviews != None:
@@ -74,11 +77,22 @@ for part in parts:
     sleep(3)
 ```
 
-# Methods
+# Creating the Scraper object
 
 ---
 
-### `part_search(search_term, limit=20, region=None)`
+### `Scraper(headers={...})`
+
+### Parameters
+- **headers** ( [dict](https://docs.python.org/3/library/stdtypes.html#mapping-types-dict) ) - The browser headers for the requests in a dict.
+
+  Note: There are headers set by default. I only recommend changing them if you are encountering scraping errors.
+
+# Scraper Methods
+
+---
+
+### `Scraper.part_search(search_term, limit=20, region=None)`
 #### Returns Part objects using PCPartPicker's search function.
 ### **Parameters**
 - **search_term** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The term you want to search for.
@@ -101,7 +115,7 @@ A list of Part objects corresponding to the results on PCPartPicker.
 
 ---
 
-### `fetch_product(product_url)`
+### `Scraper.fetch_product(product_url)`
 #### Returns a Product object from a PCPartPicker product URL.
 ### **Parameters**
 - **product_url** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The product URL for the product you want to search for.
@@ -112,7 +126,7 @@ A list of Part objects corresponding to the results on PCPartPicker.
 A Product object for the part.
 
 ---
-### `fetch_list(list_url)`
+### `Scraper.fetch_list(list_url)`
 #### Returns a PCPPLIst object from a PCPartPicker list URL.
 ### **Parameters**
 - **list_url** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The URL for the parts list.
@@ -123,7 +137,7 @@ A Product object for the part.
 A PCPPList object for the list.
 
 ---
-### `get_list_links(string)`
+### `Scraper.get_list_links(string)`
 #### Returns a list of PCPartPicker list links from the given string.
 ### **Parameters**
 - **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the parts list URL.
@@ -134,7 +148,7 @@ A PCPPList object for the list.
 A list of URLs.
 
 ---
-### `get_product_links(string)`
+### `Scraper.get_product_links(string)`
 #### Returns a list of PCPartPicker product links from the given string.
 ### **Parameters**
 - **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the product URL.
@@ -149,11 +163,17 @@ A list of URLs.
 ___
 #### Same syntax as sync functions, but add aio_ to the beginning of the method name and add await before the function call.
 #### For example:
-`results = part_search("i5")`
+```python
+pcpp = Scraper()
+results = pcpp.part_search("i5")
+```
 
 becomes
 
-`results = await aio_part_search("i5")`
+```python
+pcpp = Scraper()
+results = await pcpp.aio_part_search("i5")
+```
 
 Remember: you can only call async functions within other async functions. If you are not writing async code, do not use these methods. Use the sync methods, which don't have aio_ before their name.
 
