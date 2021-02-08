@@ -57,6 +57,8 @@ class Review:
         self.rating = kwargs.get("rating")
         self.content = kwargs.get("content")
 
+class Verification(Exception):
+    pass
 
 class Scraper:
 
@@ -67,18 +69,15 @@ class Scraper:
         self.headers = headers_dict
 
 
-
-
-
     def make_soup(self, url) -> BeautifulSoup:
         # sends a request to the URL
         page = requests.get(url, headers=self.headers)
         # gets the HTML code for the website and parses it using Python's built in HTML parser
         soup = BeautifulSoup(page.content, 'html.parser')
+        if "Verification" in soup.find(class_="pageTitle").get_text():
+            raise Verification("You are being rate limited by PCPartPicker!")
         # returns the HTML
         return soup
-
-
 
 
     def fetch_list(self, list_url) -> PCPPList:
@@ -133,8 +132,6 @@ class Scraper:
 
         # returns a PCPPList object containing all the information
         return PCPPList(parts=parts, wattage=wattage, total=total_cost, url=list_url, compatibility=compatibilitynotes)
-
-
 
 
     def part_search(self, search_term, **kwargs) -> Part:
@@ -225,8 +222,6 @@ class Scraper:
 
         # returns the part objects
         return parts[:kwargs.get("limit", 20)]
-
-
 
 
     def fetch_product(self, part_url) -> Product:
