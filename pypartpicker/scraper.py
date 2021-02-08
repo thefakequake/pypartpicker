@@ -59,7 +59,8 @@ class Review:
 
 def make_soup(url) -> BeautifulSoup:
     headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63'
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63',
+        'cookie': 'xsessionid=8gxgh7l25gwr276aregdd4qnj7zhmxwb; xcsrftoken=o7wXfkFMvIMf5SKShBaC4E0KJ7anQ1mdzHuZ4G6sWwMH2gSbcsZn5YdneEKo8fiv; xgdpr-consent=allow; __cfduid=d8b6350b0033bccdde51da015aaf07f381611344324; cf_clearance=d8b834d4bd7bf761c45622d38c027bc6e0d93f24-1612772344-0-150'
     }
 
     # sends a request to the URL
