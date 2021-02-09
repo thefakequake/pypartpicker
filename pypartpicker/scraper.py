@@ -75,7 +75,7 @@ class Scraper:
         # gets the HTML code for the website and parses it using Python's built in HTML parser
         soup = BeautifulSoup(page.content, 'html.parser')
         if "Verification" in soup.find(class_="pageTitle").get_text():
-            raise Verification("You are being rate limited by PCPartPicker!")
+            raise Verification(f"You are being rate limited by PCPartPicker! Slow down your rate of requests, and complete the captcha at this URL: {url}")
         # returns the HTML
         return soup
 
@@ -101,11 +101,17 @@ class Scraper:
         # iterates through every part in the table
         for item in table.find_all('tr', class_="tr__product"):
             # creates a new part object using values obtained from the tables' rows
+            part_name = item.find(class_="td__name").get_text().strip('\n').replace('\n', '')
+            if "Note:" in part_name:
+                part_name = part_name.split("Note:")[0]
+            if "From parametric filter:" in part_name:
+                part_name = part_name.split("From parametric filter:")[0]
+            if "From parametric selection:" in part_name:
+                part_name = part_name.split("From parametric selection:")[0]
+
             part_object = Part(
-                name=item.find(class_="td__name").get_text().strip('\n'),
-                price=item.find(class_="td__price").get_text().strip('\n').replace("No Prices Available",
-                                                                                   "None").replace("Price", "").strip(
-                    '\n'),
+                name=part_name,
+                price=item.find(class_="td__price").get_text().strip('\n').replace("No Prices Available", "None").replace("Price", "").strip('\n'),
                 type=item.find(class_="td__component").get_text().strip('\n').strip(),
                 image=("https://" + item.find("img", class_="")["src"]).replace("https://https://", "https://")
             )
