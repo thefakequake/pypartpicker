@@ -136,8 +136,11 @@ A Product object for the part.
 ### Returns
 A PCPPList object for the list.
 
+# Other methods
+
 ---
-### `Scraper.get_list_links(string)`
+
+### `get_list_links(string)`
 #### Returns a list of PCPartPicker list links from the given string.
 ### **Parameters**
 - **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the parts list URL.
@@ -148,7 +151,7 @@ A PCPPList object for the list.
 A list of URLs.
 
 ---
-### `Scraper.get_product_links(string)`
+### `get_product_links(string)`
 #### Returns a list of PCPartPicker product links from the given string.
 ### **Parameters**
 - **string** ( [str](https://docs.python.org/3/library/stdtypes.html#str) ) - The string containing the product URL.
