@@ -1,10 +1,12 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse
-import concurrent.futures
 import asyncio
-from functools import partial
+import concurrent.futures
 import math
+import re
+import requests
+
+from bs4 import BeautifulSoup
+from functools import partial
+from urllib.parse import urlparse
 
 
 class Part:
@@ -73,7 +75,8 @@ class Scraper:
             raise ValueError("Headers kwarg has to be a dict!")
         self.headers = headers_dict
 
-    def make_soup(self, url) -> BeautifulSoup:
+    # Private Helper Function
+    def __make_soup(self, url) -> BeautifulSoup:
         # sends a request to the URL
         page = requests.get(url, headers=self.headers)
         # gets the HTML code for the website and parses it using Python's built in HTML parser
@@ -83,14 +86,24 @@ class Scraper:
         # returns the HTML
         return soup
 
+    # Private Helper Function
+    # Uses a RegEx to check if the specified string matches the URL format of a valid PCPP parts list
+    def __check_list_url(self, url_str):
+        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\\w]+)/saved/(?:[a-zA-Z0-9]{6}))))", url_str)
+
+    # Private Helper Function
+    # Uses a RegEx to check if the specified string matches the URL format of a valid product on PCPP
+    def __check_product_url(self, url_str):
+        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/product/(?:[a-zA-Z0-9]{6}))", url_str)
+
     def fetch_list(self, list_url) -> PCPPList:
-        # checks if its a pcpartpicker list and raises an exception if its not or if the list is empty
-        if not "pcpartpicker.com/list/" in list_url or list_url.endswith("/list/"):
-            raise Exception(f"'{list_url}' is an invalid PCPartPicker list!")
+        # Ensure a valid pcpartpicker parts list was passed to the function
+        if self.__check_list_url(list_url) is None:
+            raise ValueError(f"'{list_url}' is an invalid PCPartPicker list!")
 
         # fetches the HTML code for the website
         try:
-            soup = self.make_soup(list_url)
+            soup = self.__make_soup(list_url)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid list URL! Max retries exceeded with URL.")
 
@@ -170,7 +183,7 @@ class Scraper:
         for i in range(iterations):
 
             try:
-                soup = self.make_soup(f"{search_link}&page={i + 1}")
+                soup = self.__make_soup(f"{search_link}&page={i + 1}")
             except requests.exceptions.ConnectionError:
                 raise ValueError("Invalid region! Max retries exceeded with URL.")
 
@@ -230,12 +243,12 @@ class Scraper:
         return parts[:kwargs.get("limit", 20)]
 
     def fetch_product(self, part_url) -> Product:
-        # checks if the URL is invalid
-        if not "pcpartpicker.com" in part_url and "/product/" in part_url:
+        # Ensure a valid product page was passed to the function
+        if self.__check_product_url(part_url) is None:
             raise ValueError("Invalid product URL!")
 
         try:
-            soup = self.make_soup(part_url)
+            soup = self.__make_soup(part_url)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid product URL! Max retries exceeded with URL.")
 
