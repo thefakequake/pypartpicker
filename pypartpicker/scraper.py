@@ -1,10 +1,12 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse
-import concurrent.futures
 import asyncio
-from functools import partial
+import concurrent.futures
 import math
+import re
+import requests
+
+from bs4 import BeautifulSoup
+from functools import partial
+from urllib.parse import urlparse
 
 
 class Part:
@@ -26,6 +28,7 @@ class PCPPList:
         self.url = kwargs.get("url")
         self.compatibility = kwargs.get("compatibility")
 
+
 class Product(Part):
 
     def __init__(self, **kwargs):
@@ -36,6 +39,7 @@ class Product(Part):
         self.reviews = kwargs.get("reviews")
         self.compatible_parts = kwargs.get("compatible_parts")
 
+
 class Price:
 
     def __init__(self, **kwargs):
@@ -45,6 +49,7 @@ class Price:
         self.url = kwargs.get("url")
         self.base_value = kwargs.get("base_value")
         self.in_stock = kwargs.get("in_stock")
+
 
 class Review:
 
@@ -57,8 +62,10 @@ class Review:
         self.rating = kwargs.get("rating")
         self.content = kwargs.get("content")
 
+
 class Verification(Exception):
     pass
+
 
 class Scraper:
 
@@ -68,8 +75,8 @@ class Scraper:
             raise ValueError("Headers kwarg has to be a dict!")
         self.headers = headers_dict
 
-
-    def make_soup(self, url) -> BeautifulSoup:
+    # Private Helper Function
+    def __make_soup(self, url) -> BeautifulSoup:
         # sends a request to the URL
         page = requests.get(url, headers=self.headers)
         # gets the HTML code for the website and parses it using Python's built in HTML parser
@@ -79,16 +86,24 @@ class Scraper:
         # returns the HTML
         return soup
 
+    # Private Helper Function
+    # Uses a RegEx to check if the specified string matches the URL format of a valid PCPP parts list
+    def __check_list_url(self, url_str):
+        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\\w]+)/saved/(?:[a-zA-Z0-9]{6}))))", url_str)
+
+    # Private Helper Function
+    # Uses a RegEx to check if the specified string matches the URL format of a valid product on PCPP
+    def __check_product_url(self, url_str):
+        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/product/(?:[a-zA-Z0-9]{6}))", url_str)
 
     def fetch_list(self, list_url) -> PCPPList:
-
-        # checks if its a pcpartpicker list and raises an exception if its not or if the list is empty
-        if not "pcpartpicker.com/list/" in list_url or list_url.endswith("/list/"):
-            raise Exception(f"'{list_url}' is an invalid PCPartPicker list!")
+        # Ensure a valid pcpartpicker parts list was passed to the function
+        if self.__check_list_url(list_url) is None:
+            raise ValueError(f"'{list_url}' is an invalid PCPartPicker list!")
 
         # fetches the HTML code for the website
         try:
-            soup = self.make_soup(list_url)
+            soup = self.__make_soup(list_url)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid list URL! Max retries exceeded with URL.")
 
@@ -139,9 +154,7 @@ class Scraper:
         # returns a PCPPList object containing all the information
         return PCPPList(parts=parts, wattage=wattage, total=total_cost, url=list_url, compatibility=compatibilitynotes)
 
-
     def part_search(self, search_term, **kwargs) -> Part:
-
         search_term = search_term.replace(' ', '+')
         limit = kwargs.get("limit", 20)
 
@@ -170,7 +183,7 @@ class Scraper:
         for i in range(iterations):
 
             try:
-                soup = self.make_soup(f"{search_link}&page={i + 1}")
+                soup = self.__make_soup(f"{search_link}&page={i + 1}")
             except requests.exceptions.ConnectionError:
                 raise ValueError("Invalid region! Max retries exceeded with URL.")
 
@@ -179,9 +192,9 @@ class Scraper:
 
                 # creates a part object with the information from the product page
                 part_object = Part(
-                    name = soup.find(class_="pageTitle").get_text(),
-                    url = search_link,
-                    price = None
+                    name=soup.find(class_="pageTitle").get_text(),
+                    url=search_link,
+                    price=None
                 )
 
                 # searches for the pricing table
@@ -214,9 +227,9 @@ class Scraper:
             for product in section.find_all("ul", class_="list-unstyled"):
                 # extracts the product data from the HTML code and creates a part object with that information
                 part_object = Part(
-                    name = product.find("p", class_="search_results--link").get_text().strip(),
-                    url = "https://" + urlparse(search_link).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
-                    image = ("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
+                    name=product.find("p", class_="search_results--link").get_text().strip(),
+                    url="https://" + urlparse(search_link).netloc + product.find("p", class_="search_results--link").find("a", href=True)["href"],
+                    image=("https://" + product.find("img")["src"].strip('/')).replace("https://https://", "https://")
                 )
                 try:
                     part_object.price = product.find(class_="product__link product__link--price").get_text()
@@ -229,15 +242,13 @@ class Scraper:
         # returns the part objects
         return parts[:kwargs.get("limit", 20)]
 
-
     def fetch_product(self, part_url) -> Product:
-
-        # checks if the URL is invalid
-        if not "pcpartpicker.com" in part_url and "/product/" in part_url:
+        # Ensure a valid product page was passed to the function
+        if self.__check_product_url(part_url) is None:
             raise ValueError("Invalid product URL!")
 
         try:
-            soup = self.make_soup(part_url)
+            soup = self.__make_soup(part_url)
         except requests.exceptions.ConnectionError:
             raise ValueError("Invalid product URL! Max retries exceeded with URL.")
 
@@ -282,7 +293,7 @@ class Scraper:
         review_box = soup.find(class_="block partReviews")
 
         # skips over this process if the review box does not exist
-        if review_box != None:
+        if review_box is not None:
 
             reviews = []
 
@@ -322,7 +333,7 @@ class Scraper:
         compatible_parts = None
         # fetches section with compatible parts hyperlinks
         compatible_parts_list = soup.find(class_="compatibleParts__list list-unstyled")
-        if compatible_parts_list != None:
+        if compatible_parts_list is not None:
             compatible_parts = []
             # finds every list item in the section
             for item in compatible_parts_list.find_all("li"):
@@ -347,28 +358,23 @@ class Scraper:
 
         image_box = soup.find(class_="single_image_gallery_box")
 
-        if image_box != None:
+        if image_box is not None:
             # adds image to object if it finds one
             product_object.image = image_box.find("img")["src"].replace("https://https://", "https://")
 
         return product_object
 
-
-    async def aio_part_search(search_term, **kwargs):
+    async def aio_part_search(self, search_term, **kwargs):
         with concurrent.futures.ThreadPoolExecutor() as pool:
             result = await asyncio.get_event_loop().run_in_executor(pool, partial(self.part_search, search_term, **kwargs))
         return result
 
-
-    async def aio_fetch_list(list_url):
+    async def aio_fetch_list(self, list_url):
         with concurrent.futures.ThreadPoolExecutor() as pool:
             result = await asyncio.get_event_loop().run_in_executor(pool, self.fetch_list, list_url)
         return result
 
-
-    async def aio_fetch_product(part_url):
+    async def aio_fetch_product(self, part_url):
         with concurrent.futures.ThreadPoolExecutor() as pool:
             result = await asyncio.get_event_loop().run_in_executor(pool, self.fetch_product, part_url)
         return result
-
-
