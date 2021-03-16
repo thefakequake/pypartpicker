@@ -5,8 +5,9 @@
 ---
 ### Features:
 - Obtain Part objects, estimated wattage and total cost from PCPartPicker lists.
-- Obtain name, product URl, price, product type, image and more from Part objects.
-- Obtain everything previously mentioned + specs, reviews and in depth pricing information from PCPartPicker product links
+- Obtain name, product URL, price, product type, image and more from Part objects.
+- Obtain everything previously mentioned + specs, reviews and in depth pricing information from PCPartPicker product links.
+- Async ready: all scraping methods have an asynchronous version
 
 
 # Installation
