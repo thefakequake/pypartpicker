@@ -82,12 +82,16 @@ for part in parts:
 
 ---
 
-### `Scraper(headers={...})`
+### `Scraper(headers={...}, response_retriever=...)`
 
 ### Parameters
 - **headers** ( [dict](https://docs.python.org/3/library/stdtypes.html#mapping-types-dict) ) - The browser headers for the requests in a dict.
 
   Note: There are headers set by default. I only recommend changing them if you are encountering scraping errors.
+
+- **response_retriever** ( [Callable](https://docs.python.org/3/library/typing.html#typing.Callable) ) - A function accepting arguments (`url, **kwargs`) that is called to retrieve the response from PCPartPicker
+
+  Note: A default retriever is configured that calls pcpartpicker.com directly. I only recommend changing this if you need to configure how the request is made (e.g. via a proxy)
 
 # Scraper Methods
 

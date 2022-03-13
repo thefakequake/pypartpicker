@@ -74,11 +74,19 @@ class Scraper:
         if not isinstance(headers_dict, dict):
             raise ValueError("Headers kwarg has to be a dict!")
         self.headers = headers_dict
+        response_retriever = kwargs.get("response_retriever", self.__default_response_retriever)
+        if not callable(response_retriever):
+            raise ValueError("response_retriever kwarg must be callable!")
+        self.response_retriever = response_retriever
+
+    @staticmethod
+    def __default_response_retriever(url, **kwargs):
+        return requests.get(url, **kwargs)
 
     # Private Helper Function
     def __make_soup(self, url) -> BeautifulSoup:
         # sends a request to the URL
-        page = requests.get(url, headers=self.headers)
+        page = self.response_retriever(url, headers=self.headers)
         # gets the HTML code for the website and parses it using Python's built in HTML parser
         soup = BeautifulSoup(page.content, 'html.parser')
         if "Verification" in soup.find(class_="pageTitle").get_text():
