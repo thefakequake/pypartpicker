@@ -89,7 +89,7 @@ class Scraper:
     # Private Helper Function
     # Uses a RegEx to check if the specified string matches the URL format of a valid PCPP parts list
     def __check_list_url(self, url_str):
-        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\\w]+)/saved/(?:[a-zA-Z0-9]{6}))))", url_str)
+        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\w]+)/saved/(?:[a-zA-Z0-9]{6}))))", url_str)
 
     # Private Helper Function
     # Uses a RegEx to check if the specified string matches the URL format of a valid product on PCPP
