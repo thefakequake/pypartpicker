@@ -3,6 +3,7 @@ import concurrent.futures
 import math
 import re
 import requests
+from pypartpicker.regex import LIST_REGEX, PRODUCT_REGEX
 
 from bs4 import BeautifulSoup
 from functools import partial
@@ -97,12 +98,12 @@ class Scraper:
     # Private Helper Function
     # Uses a RegEx to check if the specified string matches the URL format of a valid PCPP parts list
     def __check_list_url(self, url_str):
-        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\\w]+)/saved/(?:[a-zA-Z0-9]{6}))))", url_str)
+        return re.search(LIST_REGEX, url_str)
 
     # Private Helper Function
     # Uses a RegEx to check if the specified string matches the URL format of a valid product on PCPP
     def __check_product_url(self, url_str):
-        return re.search(r"((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/product/(?:[a-zA-Z0-9]{6}))", url_str)
+        return re.search(PRODUCT_REGEX, url_str)
 
     def fetch_list(self, list_url) -> PCPPList:
         # Ensure a valid pcpartpicker parts list was passed to the function
