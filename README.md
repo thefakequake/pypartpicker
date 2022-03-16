@@ -19,7 +19,7 @@ Installation via pip:
 ```
 Or clone the repo directly:
 ```
->>> git clone https://github.com/QuaKe8782/pypartpicker.git
+>>> git clone https://github.com/thefakequake/pypartpicker.git
 ```
 # Example programs
 
