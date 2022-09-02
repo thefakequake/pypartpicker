@@ -3,5 +3,8 @@
 *Scripts
 *Lib
 *Include
-*example.py
 *pyvenv.cfg
+*.egg-info
+venv
+.venv
+dist
