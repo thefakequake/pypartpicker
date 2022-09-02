@@ -197,7 +197,7 @@ class Scraper:
             compatibility=compatibilitynotes,
         )
 
-    def part_search(self, search_term, **kwargs) -> Part:
+    def part_search(self, search_term, **kwargs) -> list[Part]:
         search_term = search_term.replace(" ", "+")
         limit = kwargs.get("limit", 20)
 
