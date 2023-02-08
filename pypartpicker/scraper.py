@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import math
 import re
+from typing import List
 import requests
 from pypartpicker.regex import LIST_REGEX, PRODUCT_REGEX
 
@@ -197,7 +198,7 @@ class Scraper:
             compatibility=compatibilitynotes,
         )
 
-    def part_search(self, search_term, **kwargs) -> list[Part]:
+    def part_search(self, search_term, **kwargs) -> List[Part]:
         search_term = search_term.replace(" ", "+")
         limit = kwargs.get("limit", 20)
 
