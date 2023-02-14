@@ -5,6 +5,7 @@ import re
 from typing import List
 import requests
 from pypartpicker.regex import LIST_REGEX, PRODUCT_REGEX
+from time import sleep
 
 from bs4 import BeautifulSoup
 from functools import partial
@@ -201,6 +202,7 @@ class Scraper:
     def part_search(self, search_term, **kwargs) -> List[Part]:
         search_term = search_term.replace(" ", "+")
         limit = kwargs.get("limit", 20)
+        wait = kwargs.get("wait", 0)
 
         # makes sure limit is an integer, raises ValueError if it's not
         if not isinstance(limit, int):
@@ -228,7 +230,7 @@ class Scraper:
         parts = []
 
         for i in range(iterations):
-
+            sleep(wait)
             try:
                 soup = self.__make_soup(f"{search_link}&page={i + 1}")
             except requests.exceptions.ConnectionError:
@@ -347,7 +349,7 @@ class Scraper:
                 if "In stock" in row.find(class_="td__availability").get_text()
                 else False,
             )
-            # chceks if its the cheapest in stock price
+            # checks if its the cheapest in stock price
             if (
                 price is None
                 and "In stock" in row.find(class_="td__availability").get_text()
