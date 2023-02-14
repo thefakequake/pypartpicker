@@ -129,7 +129,7 @@ class Scraper:
 
         # iterates through every part in the table
         for item in table.find_all("tr", class_="tr__product"):
-            # creates a new part object using values obtained from the tables' rows
+            # creates a new part object using values obtained from the table's rows
             part_name = (
                 item.find(class_="td__name").get_text().strip("\n").replace("\n", "")
             )
@@ -403,7 +403,7 @@ class Scraper:
                         break
                     iterations += 1
 
-                # creates review object with all the information
+                # creates review object with all the informations
                 review_object = Review(
                     author=review.find(class_="userDetails__userName").get_text(),
                     author_url="https://"
