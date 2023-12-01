@@ -228,7 +228,6 @@ class Scraper:
         parts = []
 
         for i in range(iterations):
-
             try:
                 soup = self.__make_soup(f"{search_link}&page={i + 1}")
             except requests.exceptions.ConnectionError:
@@ -236,7 +235,6 @@ class Scraper:
 
             # checks if the page redirects to a product page
             if soup.find(class_="pageTitle").get_text() != "Product Search":
-
                 # creates a part object with the information from the product page
                 part_object = Part(
                     name=soup.find(class_="pageTitle").get_text(),
@@ -249,14 +247,12 @@ class Scraper:
 
                 # loops through every row in the table
                 for row in table.find_all("tr"):
-
                     # first conditional statement makes sure its not the top row with the table parameters, second checks if the product is out of stock
                     if (
                         not "td__availability" in str(row)
                         or "Out of stock"
                         in row.find(class_="td__availability").get_text()
                     ):
-
                         # skips this iteration
                         continue
 
@@ -295,11 +291,11 @@ class Scraper:
                         "https://https://", "https://"
                     ),
                 )
-                try:
-                    part_object.price = product.find(
-                        class_="product__link product__link--price"
-                    ).get_text()
-                except AttributeError:
+                part_object.price = (
+                    product.find(class_="search_results--price").get_text().strip()
+                )
+
+                if part_object.price == "":
                     part_object.price = None
 
                 # adds the part object to the list
@@ -374,20 +370,20 @@ class Scraper:
 
         # skips over this process if the review box does not exist
         if review_box is not None:
-
             reviews = []
 
+            count = 0
             # counts stars in reviews
             for review in review_box.find_all(class_="partReviews__review"):
+                count += 1
+                print(count)
                 stars = 0
-                for star in review.find(
-                    class_="product--rating list-unstyled"
-                ).find_all("li"):
-                    if " ".join(star.find("svg")["class"]) == "icon shape-star-full":
-                        stars += 1
+                for _ in review.find(class_="shape-star-full"):
+                    stars += 1
 
                 # gets the upvotes and timestamp
                 iterations = 0
+
                 for info in review.find(
                     class_="userDetails__userData list-unstyled"
                 ).find_all("li"):
@@ -406,7 +402,7 @@ class Scraper:
                     author=review.find(class_="userDetails__userName").get_text(),
                     author_url="https://"
                     + urlparse(part_url).netloc
-                    + review.find(class_="userDetails__userName")["href"],
+                    + review.find(class_="userDetails__userName").find("a")["href"],
                     author_icon="https://"
                     + urlparse(part_url).netloc
                     + review.find(class_="userAvatar userAvatar--entry").find("img")[
@@ -444,7 +440,7 @@ class Scraper:
             specs=specs,
             price_list=prices,
             price=price,
-            rating=soup.find(class_="actionBox actionBox__ratings")
+            rating=soup.find(class_="actionBox-2023 actionBox__ratings")
             .find(class_="product--rating list-unstyled")
             .get_text()
             .strip("\n")
