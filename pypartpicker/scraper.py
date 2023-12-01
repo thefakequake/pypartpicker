@@ -372,11 +372,8 @@ class Scraper:
         if review_box is not None:
             reviews = []
 
-            count = 0
             # counts stars in reviews
             for review in review_box.find_all(class_="partReviews__review"):
-                count += 1
-                print(count)
                 stars = 0
                 for _ in review.find(class_="shape-star-full"):
                     stars += 1
