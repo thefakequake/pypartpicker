@@ -5,14 +5,14 @@ with open("README.md", "r", encoding="utf-8") as readme:
 
 setup(
     name="pypartpicker",
-    version="1.9.4",
+    version="1.9.5",
     description="A package that scrapes pcpartpicker.com and returns the results as objects.",
     packages=["pypartpicker"],
     url="https://github.com/thefakequake/pypartpicker",
     keywords=["pcpartpicker", "scraper", "list", "beautifulsoup", "pc", "parts"],
     install_requires=["bs4", "requests"],
     zip_safe=False,
-    download_url="https://github.com/thefakequake/pypartpicker/archive/refs/tags/v1.9.4.tar.gz",
+    download_url="https://github.com/thefakequake/pypartpicker/archive/refs/tags/v1.9.5.tar.gz",
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=[
