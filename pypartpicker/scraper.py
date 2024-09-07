@@ -139,6 +139,12 @@ class Scraper:
             if "From parametric selection:" in part_name:
                 part_name = part_name.split("From parametric selection:")[0]
 
+            if image := item.find("img", class_=""):
+                image: dict[str, str]
+                image = ("https://" + image["src"]).replace(
+                    "https://https://", "https://"
+                )
+
             part_object = Part(
                 name=part_name,
                 price=item.find(class_="td__price")
@@ -148,9 +154,7 @@ class Scraper:
                 .replace("Price", "")
                 .strip("\n"),
                 type=item.find(class_="td__component").get_text().strip("\n").strip(),
-                image=("https://" + item.find("img", class_="")["src"]).replace(
-                    "https://https://", "https://"
-                ),
+                image=image,
             )
             # converts string representation of 'None' to NoneType
             if part_object.price == "None":
