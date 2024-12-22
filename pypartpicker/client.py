@@ -26,9 +26,9 @@ class Client:
 
 
 class AsyncClient:
-    def __init__(self, loop: AbstractEventLoop = None, **kwargs):
+    def __init__(self, **kwargs):
         self.__scraper = Scraper(**kwargs)
-        self.__session = None  # Delay session initialization
+        self.__session = None
 
     async def __aenter__(self):
         self.__session = AsyncHTMLSession()
