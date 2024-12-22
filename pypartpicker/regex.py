@@ -1,16 +1,8 @@
 import re
+from .urls import BASE_PRODUCT_PATH
 
-LIST_REGEX = re.compile(
-    "((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/(?:(?:list/(?:[a-zA-Z0-9]{6}))|(?:user/(?:[\\w]+)/saved/(?:[a-zA-Z0-9]{6}))))"
-)
-PRODUCT_REGEX = re.compile(
-    "((?:http|https)://(?:[a-z]{2}.)?pcpartpicker.com/product/(?:[a-zA-Z0-9]{6}))"
-)
-
-
-def get_list_links(string):
-    return re.findall(LIST_REGEX, string)
-
-
-def get_product_links(string):
-    return re.findall(PRODUCT_REGEX, string)
+PCPP_BASE_RE = re.compile("(http|https)://([a-zA-Z]{2}\.)?pcpartpicker\.com")
+ID_RE = re.compile("(\w{6})")
+PRODUCT_URL_RE = re.compile(PCPP_BASE_RE.pattern + BASE_PRODUCT_PATH + ID_RE.pattern)
+PRODUCT_RATINGS_RE = re.compile("\(([0-9]+) Ratings, ([0-9]\.[0-9]) Average\)")
+DECIMAL_RE = re.compile("[0-9]+\.[0-9]+")
