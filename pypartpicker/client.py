@@ -7,7 +7,6 @@ class Client:
     def __init__(self, **kwargs):
         self.__scraper = Scraper(**kwargs)
         self.__session = HTMLSession()
-        pass
 
     def __get_response(self, url: str) -> Response:
         return self.__session.get(url)
@@ -21,7 +20,6 @@ class AsyncClient:
     def __init__(self, **kwargs):
         self.__scraper = Scraper(**kwargs)
         self.__session = AsyncHTMLSession()
-        pass
 
     async def __get_response(self, url: str) -> Response:
         return await self.__session.get(url)
