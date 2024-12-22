@@ -1,7 +1,9 @@
+from asyncio import AbstractEventLoop
 from .scraper import Scraper
 from .part import Part, PartList
 from requests import Response
 from requests_html import HTMLSession, AsyncHTMLSession
+from typing import Coroutine
 
 
 class Client:
@@ -24,9 +26,26 @@ class Client:
 
 
 class AsyncClient:
-    def __init__(self, **kwargs):
+    def __init__(self, loop: AbstractEventLoop = None, **kwargs):
         self.__scraper = Scraper(**kwargs)
-        self.__session = AsyncHTMLSession()
+        self.__session = None  # Delay session initialization
 
-    async def __get_response(self, url: str) -> Response:
+    async def __aenter__(self):
+        self.__session = AsyncHTMLSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.__session.close()
+
+    async def __get_response(self, url: str) -> Coroutine[None, None, Response]:
         return await self.__session.get(url)
+
+    async def get_part(self, id_url, **kwargs) -> Coroutine[None, None, Part]:
+        url = self.__scraper.prepare_part_url(id_url, **kwargs)
+        res = await self.__get_response(url)
+        return self.__scraper.parse_part(res)
+
+    async def get_part_list(self, id_url, **kwargs) -> Coroutine[None, None, PartList]:
+        url = self.__scraper.prepare_part_list_url(id_url, **kwargs)
+        res = await self.__get_response(url)
+        return self.__scraper.parse_part_list(res)
