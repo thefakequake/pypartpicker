@@ -4,12 +4,12 @@ from typing import Optional
 class Price:
     def __init__(
         self,
-        base: float,
-        discounts: float,
-        shipping: float,
-        tax: float,
-        total: float,
-        currency: str,
+        base: Optional[float],
+        discounts: Optional[float],
+        shipping: Optional[float],
+        tax: Optional[float],
+        total: Optional[float],
+        currency: Optional[str],
     ):
         self.base = base
         self.discounts = discounts
@@ -22,6 +22,8 @@ class Price:
         return f"<Price total={self.total} currency={self.currency}>"
 
     def __str__(self):
+        if self.currency is None:
+            return "<No Prices Available>"
         return self.currency + str(self.total)
 
 
@@ -51,8 +53,8 @@ class Part:
         self,
         name: str,
         type: str,
-        image_urls: list[str],
-        url: str,
+        image_urls: Optional[list[str]],
+        url: Optional[str],
         cheapest_price: float,
         in_stock: bool,
         vendors: Optional[list[Vendor]] = None,
@@ -71,3 +73,19 @@ class Part:
 
     def __repr__(self):
         return f"<Part {self.name}>"
+
+
+class PartList:
+    def __init__(
+        self,
+        parts: list[Part],
+        url: str,
+        estimated_wattage: float,
+        total_price: float,
+        currency: str,
+    ):
+        self.parts = parts
+        self.url = url
+        self.estimated_wattage = estimated_wattage
+        self.total_price = total_price
+        self.currency = currency

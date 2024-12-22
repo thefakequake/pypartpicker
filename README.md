@@ -4,6 +4,7 @@ A PCPartPicker data extractor for Python.
 
 ### Features:
 - Fetch product specs, prices and ratings
+- Fetch part lists
 - Supports all PCPartPicker regions
 
 # Installation
