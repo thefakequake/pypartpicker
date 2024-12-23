@@ -1,4 +1,4 @@
-from .part import *
+from .types import *
 from .client import *
 
 

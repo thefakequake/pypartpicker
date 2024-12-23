@@ -1,7 +1,17 @@
 from typing import Optional
 from requests_html import HTML
 import urllib.parse
-from .part import Part, Rating, Vendor, Price, PartList, PartSearchResult
+from .types import (
+    Part,
+    Rating,
+    Vendor,
+    Price,
+    PartList,
+    PartSearchResult,
+    Review,
+    User,
+    PartReviewsResponse,
+)
 from .urls import *
 from .regex import *
 from requests import Response
@@ -153,6 +163,12 @@ class Scraper:
                 0
             ].price
 
+        base_url = "https://" + urllib.parse.urlparse(res.url).netloc
+
+        reviews = []
+        for review in html.find(".partReviews .partReviews__review"):
+            reviews.append(self.parse_review(review, base_url))
+
         return Part(
             name=name,
             type=type,
@@ -163,6 +179,76 @@ class Scraper:
             vendors=vendors,
             rating=rating,
             specs=specs,
+            reviews=reviews,
+        )
+
+    def parse_review(self, review: HTML, base_url: str) -> Review:
+        user_details = review.find(".userDetails", first=True)
+        avatar_url = user_details.find("img", first=True).attrs["src"]
+        if avatar_url.startswith("//"):
+            avatar_url = "https:" + avatar_url
+        else:
+            avatar_url = base_url + avatar_url
+
+        name_container = user_details.find(".userDetails__userName a", first=True)
+        profile_url = base_url + name_container.attrs["href"]
+        username = name_container.text
+
+        user_data = user_details.find(".userDetails__userData", first=True)
+        points = int(user_data.find("li:first-child", first=True).text.split(" ")[0])
+        created_at = user_data.find("li:last-child", first=True).text
+
+        review_name = review.find(".partReviews__name", first=True)
+        stars = len(review_name.find(".product--rating .shape-star-full"))
+
+        build_name = None
+        build_url = None
+        build_a = review_name.find("a", first=True)
+        if build_a is not None:
+            build_name = build_a.text
+            build_url = base_url + build_a.attrs["href"]
+
+        content = review.find(".partReviews__writeup", first=True).text
+
+        return Review(
+            author=User(username, avatar_url, profile_url),
+            points=points,
+            stars=stars,
+            created_at=created_at,
+            content=content,
+            build_name=build_name,
+            build_url=build_url,
+        )
+
+    def prepare_part_reviews_url(
+        self,
+        id_url: str,
+        page: int = 1,
+        rating: Optional[int] = None,
+    ):
+        base = self.prepare_part_url(id_url)
+        if rating is None:
+            return f"{base}{BASE_PART_REVIEWS_PATH}?page={page}"
+        return f"{base}{BASE_PART_REVIEWS_PATH}?page={page}&rating={rating}"
+
+    def parse_reviews(self, res: Response):
+        html: HTML = res.html
+        base_url = "https://" + urllib.parse.urlparse(res.url).netloc
+        reviews = []
+        for review in html.find(".partReviews .partReviews__review"):
+            reviews.append(self.parse_review(review, base_url))
+
+        pagination = html.find("#module-pagination", first=True)
+
+        try:
+            current_page = int(pagination.find(".pagination--current", first=True).text)
+            total_pages = int(pagination.find("li:last-child", first=True).text)
+        except AttributeError:
+            current_page = 0
+            total_pages = 0
+
+        return PartReviewsResponse(
+            reviews=reviews, page=current_page, total_pages=total_pages
         )
 
     def prepare_part_list_url(self, id_url: str, region: str = None) -> str:
@@ -394,14 +480,46 @@ class Scraper:
                     currency=currency,
                 )
 
-            type = name.split(" ")[-2]
-            if type == "Processor":
-                type = "CPU"
+            type = None
+
+            match "(".join(name.split("(")[:-1]).split(" ")[-4:-1]:
+                case [*_, "Processor"]:
+                    type = "CPU"
+                case [_, "Fan", "Controller"]:
+                    type = "Fan Controller"
+                case [_, "Network", "Adapter"]:
+                    type = "Wired Network Adapter"
+                case [_, "Wi-Fi", "Adapter"]:
+                    type = "Wireless Network Adapter"
+                case [_, "Video", "Card"]:
+                    type = "Video Card"
+                case [_, "CPU", "Cooler"]:
+                    type = "CPU Cooler"
+                case [_, "Power", "Supply"]:
+                    type = "Power Supply"
+                case [_, "Thermal", "Paste"]:
+                    type = "Thermal Compound"
+                case [_, "Sound", "Card"]:
+                    type = "Sound Card"
+                case [_, "Fans", _] | [*_, "Fan"]:
+                    type = "Case Fan"
+                case ["External", _, _] | [_, "External", _]:
+                    type = "External Storage"
+                case [*_, "Writer"]:
+                    type = "Optical Drive"
+                case [*_, "Headset"] | [*_, "Headphones"]:
+                    type = "Headphones"
+                case ["Solid", "State", "Drive"] | [_, "Hard", "Drive"]:
+                    type = "Storage"
+                case [*_, a]:
+                    type = a
+            if "Windows" in name:
+                type = "Operating System"
 
             results.append(
                 Part(
                     name=name,
-                    type=None,
+                    type=type,
                     image_urls=[image_url],
                     url=url,
                     cheapest_price=cheapest_price,
@@ -414,8 +532,12 @@ class Scraper:
 
         pagination = html.find("#module-pagination", first=True)
 
-        current_page = int(pagination.find(".pagination--current", first=True).text)
-        total_pages = int(pagination.find("li:last-child", first=True).text)
+        try:
+            current_page = int(pagination.find(".pagination--current", first=True).text)
+            total_pages = int(pagination.find("li:last-child", first=True).text)
+        except AttributeError:
+            current_page = 0
+            total_pages = 0
 
         return PartSearchResult(
             parts=results, page=current_page, total_pages=total_pages

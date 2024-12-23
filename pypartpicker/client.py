@@ -1,5 +1,5 @@
 from .scraper import Scraper
-from .part import Part, PartList, PartSearchResult
+from .types import Part, PartList, PartSearchResult
 from .errors import CloudflareException, RateLimitException
 from requests import Response
 from requests_html import HTMLSession, AsyncHTMLSession
@@ -49,6 +49,13 @@ class Client:
         res = self.__get_response(url)
         return self.__scraper.parse_part_search(res)
 
+    def get_part_reviews(
+        self, id_url: str, page: int = 1, rating: Optional[int] = None
+    ):
+        url = self.__scraper.prepare_part_reviews_url(id_url, page, rating)
+        res = self.__get_response(url)
+        return self.__scraper.parse_reviews(res)
+
 
 class AsyncClient:
     def __init__(self, max_retries=3, retry_delay=0):
@@ -64,7 +71,9 @@ class AsyncClient:
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.__session.close()
 
-    async def __get_response(self, url: str, retries=0) -> Coroutine[None, None, Response]:
+    async def __get_response(
+        self, url: str, retries=0
+    ) -> Coroutine[None, None, Response]:
         if retries >= self.max_retries:
             raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
 

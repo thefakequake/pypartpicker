@@ -4,12 +4,12 @@ from typing import Optional
 class Price:
     def __init__(
         self,
-        base: Optional[float],
-        discounts: Optional[float],
-        shipping: Optional[float],
-        tax: Optional[float],
-        total: Optional[float],
-        currency: Optional[str],
+        base: Optional[float] = None,
+        discounts: Optional[float] = None,
+        shipping: Optional[float] = None,
+        tax: Optional[float] = None,
+        total: Optional[float] = None,
+        currency: Optional[str] = None,
     ):
         self.base = base
         self.discounts = discounts
@@ -48,6 +48,45 @@ class Rating:
         return f"<Rating stars={self.stars} count={self.count} average={self.average}>"
 
 
+class User:
+    def __init__(
+        self,
+        username: str,
+        avatar_url: str,
+        profile_url: str,
+    ):
+        self.username = username
+        self.avatar_url = avatar_url
+        self.profile_url = profile_url
+
+
+class Review:
+    def __init__(
+        self,
+        author: User,
+        points: int,
+        stars: int,
+        created_at: str,
+        content: str,
+        build_name: Optional[str] = None,
+        build_url: Optional[str] = None,
+    ):
+        self.author = author
+        self.points = points
+        self.stars = stars
+        self.created_at = created_at
+        self.content = content
+        self.build_name = build_name
+        self.build_url = build_url
+
+
+class PartReviewsResponse:
+    def __init__(self, reviews: list[Review], page: int, total_pages: int):
+        self.reviews = reviews
+        self.page = page
+        self.total_pages = total_pages
+
+
 class Part:
     def __init__(
         self,
@@ -60,6 +99,7 @@ class Part:
         vendors: Optional[list[Vendor]] = None,
         rating: Optional[Rating] = None,
         specs: Optional[dict[str, str]] = None,
+        reviews: Optional[list[Review]] = None,
     ):
         self.name = name
         self.type = type
@@ -70,6 +110,7 @@ class Part:
         self.vendors = vendors
         self.rating = rating
         self.specs = specs
+        self.reviews = reviews
 
     def __repr__(self):
         return f"<Part {self.name}>"
