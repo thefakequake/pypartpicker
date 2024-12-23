@@ -8,11 +8,14 @@ import time
 
 
 class Client:
-    def __init__(self, max_retries=3, retry_delay=0, response_retriever=None):
+    def __init__(
+        self, max_retries=3, retry_delay=0, response_retriever=None, cookies=None
+    ):
         self.__scraper = Scraper()
         self.__session = HTMLSession()
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.cookies = cookies
 
         self.__get_response = (
             response_retriever
@@ -26,7 +29,7 @@ class Client:
         if retries >= self.max_retries:
             raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
 
-        res = self.__session.get(url)
+        res = self.__session.get(url, cookies=self.cookies)
 
         # Check if we are being Cloudflare checked
         if self.__scraper.is_cloudflare(res):
@@ -66,11 +69,15 @@ class Client:
 
 
 class AsyncClient:
-    def __init__(self, max_retries=3, retry_delay=0, response_retriever=None):
+    def __init__(
+        self, max_retries=3, retry_delay=0, response_retriever=None, cookies=None
+    ):
         self.__scraper = Scraper()
         self.__session = None
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.cookies = cookies
+
         self.__get_response = (
             response_retriever
             if response_retriever is not None
@@ -92,7 +99,7 @@ class AsyncClient:
         if retries >= self.max_retries:
             raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
 
-        res = await self.__session.get(url)
+        res = await self.__session.get(url, cookies=self.cookies)
 
         # Check if we are being Cloudflare checked
         if self.__scraper.is_cloudflare(res):
