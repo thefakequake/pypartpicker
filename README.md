@@ -29,7 +29,7 @@ Fetch a product:
 ```py
 from pypartpicker import Client
 
-client = Client(region="uk")
+client = Client()
 part = client.get_part(
     "https://pcpartpicker.com/product/fN88TW/amd-ryzen-7-5800xt-38-ghz-8-core-processor-100-100001582box"
 )
@@ -67,7 +67,7 @@ import asyncio
 
 
 async def get_parts():
-    async with AsyncClient(region="uk") as client:
+    async with AsyncClient() as client:
         part = await client.get_part(
             "https://pcpartpicker.com/product/fN88TW/amd-ryzen-7-5800xt-38-ghz-8-core-processor-100-100001582box"
         )
