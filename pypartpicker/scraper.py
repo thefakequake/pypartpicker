@@ -1,28 +1,42 @@
+from typing import Optional
 from requests_html import HTML
-from .part import Part, Rating, Vendor, Price, PartList
+import urllib.parse
+from .part import Part, Rating, Vendor, Price, PartList, PartSearchResult
 from .urls import *
 from .regex import *
 from requests import Response
 
 
 class Scraper:
-    def __init__(self, region: str = "us"):
-        self.region = region.lower()
+    def __init__(self):
+        pass
 
-    def __get_base_url(self, override_region: str = None) -> str:
-        region = self.region if override_region is None else override_region
-
+    def __get_base_url(self, region: str) -> str:
         if region == "us":
-            return f"https://pcpartpicker.com"
+            return "https://pcpartpicker.com"
 
-        return f"https://{region.lower()}.pcpartpicker.com"
+        return f"https://{region}.pcpartpicker.com"
+
+    def is_cloudflare(self, res: Response) -> bool:
+        return res.html.find("title", first=True).text == "Just a moment..."
+
+    def is_rate_limit(self, res: Response) -> bool:
+        title = res.html.find(".pageTitle", first=True)
+        if title is None:
+            return False
+        return title.text == "Verification"
 
     def prepare_part_url(self, id_url: str, region: str = None) -> str:
         match = PRODUCT_URL_RE.match(id_url)
         if match is None:
             url = ID_RE.match(id_url)
+            if url is None:
+                raise ValueError("Invalid pcpartpicker product URL or ID.")
+
             id_url = url.group(1)
+            region = "us"
         else:
+            region = "us" if match.group(2) is None else match.group(2)[:-1]
             id_url = match.group(3)
 
         if id_url is None:
@@ -137,7 +151,7 @@ class Scraper:
             in_stock = True
             cheapest_price = sorted(available_vendors, key=lambda v: v.price.total)[
                 0
-            ].price.total
+            ].price
 
         return Part(
             name=name,
@@ -153,14 +167,23 @@ class Scraper:
 
     def prepare_part_list_url(self, id_url: str, region: str = None) -> str:
         match = PART_LIST_URL_RE.match(id_url)
+        override_region = region
         if match is None:
             url = ID_RE.match(id_url)
+            if url is None:
+                raise ValueError("Invalid pcpartpicker part list URL or ID.")
+
             id_url = url.group(1)
+            region = "us"
         else:
+            region = "us" if match.group(2) is None else match.group(2)[:-1]
             id_url = match.group(3)
 
+        if override_region is not None:
+            region = override_region
+
         if id_url is None:
-            raise ValueError("Invalid pcpartpicker parts list URL or ID.")
+            raise ValueError("Invalid pcpartpicker part list URL or ID.")
 
         return self.__get_base_url(region) + BASE_PART_LIST_PATH + id_url
 
@@ -206,23 +229,15 @@ class Scraper:
             base_price = (
                 None
                 if base_price_raw == ""
-                else float(DECIMAL_RE.search(base_price_raw).group())
+                else DECIMAL_RE.search(base_price_raw).group()
             )
             currency = (
-                None
-                if base_price is None
-                else base_price_raw.replace(str(base_price), "")
+                None if base_price is None else base_price_raw.replace(base_price, "")
             )
 
-            promo = None
-            shipping = None
-            tax = None
-            total_price = None
-            vendor = None
+            vendors = []
             in_stock = False
-            vendor_name = None
-            logo_url = None
-            buy_url = None
+            total_price = None
 
             # Price parsing is painful... they're often missing or contain weird invisible text artefacts
             if base_price is not None:
@@ -259,6 +274,23 @@ class Scraper:
                 vendor_logo = vendor.find("img", first=True)
                 vendor_name = vendor_logo.attrs["alt"]
                 logo_url = "https:" + vendor_logo.attrs["src"]
+
+                vendors = [
+                    Vendor(
+                        name=vendor_name,
+                        logo_url=logo_url,
+                        in_stock=in_stock,
+                        price=Price(
+                            None if base_price is None else float(base_price),
+                            None if promo is None else -promo,
+                            shipping,
+                            tax,
+                            total_price,
+                            currency,
+                        ),
+                        buy_url=buy_url,
+                    )
+                ]
             else:
                 total_price_raw = row.find(".td__price", first=True).text.strip()
                 if (
@@ -266,23 +298,12 @@ class Scraper:
                     and total_price_raw != ""
                 ):
                     total_price = DECIMAL_RE.search(total_price_raw).group()
-                    currency = total_price_raw.replace(total_price, "").strip()
+                    currency = (
+                        total_price_raw.replace(total_price, "")
+                        .replace("Price", "")
+                        .strip()
+                    )
                     total_price = float(total_price)
-
-            vendor = Vendor(
-                name=vendor_name,
-                logo_url=logo_url,
-                in_stock=in_stock,
-                price=Price(
-                    base_price,
-                    None if promo is None else -promo,
-                    shipping,
-                    tax,
-                    total_price,
-                    currency,
-                ),
-                buy_url=buy_url,
-            )
 
             parts.append(
                 Part(
@@ -290,9 +311,24 @@ class Scraper:
                     type,
                     image_urls,
                     url,
-                    total_price,
+                    (
+                        Price(
+                            base=base_price,
+                            discounts=0,
+                            shipping=0,
+                            tax=0,
+                            total=total_price,
+                            currency=currency,
+                        )
+                        if total_price is not None
+                        else (
+                            None
+                            if vendors == []
+                            else None if currency is None else vendors[0].price
+                        )
+                    ),
                     in_stock,
-                    vendors=[vendor],
+                    vendors=vendors,
                     rating=None,
                     specs=None,
                 )
@@ -300,7 +336,7 @@ class Scraper:
 
         currency = None
         total_price = 0
-        total = part_list.find(".tr__total .td__price", first=True)
+        total = part_list.find(".tr__total--final .td__price", first=True)
         if total is not None:
             total_price = DECIMAL_RE.search(total.text).group()
             currency = total.text.replace(total_price, "").strip()
@@ -311,4 +347,70 @@ class Scraper:
             estimated_wattage=estimated_wattage,
             total_price=float(total_price),
             currency=currency,
+        )
+
+    def prepare_search_url(self, query: str, page: int, region: Optional[str]):
+        return (
+            self.__get_base_url("us" if region is None else region)
+            + BASE_SEARCH_PATH
+            + f"?q={urllib.parse.quote(query)}&page={page}"
+        )
+
+    def parse_part_search(self, res: Response) -> PartSearchResult:
+        html: HTML = res.html
+
+        # Case for which the search redirects to the product page
+        if html.find(".pageTitle", first=True).text != "Product Search":
+            return [self.parse_part(res)]
+
+        results = []
+        for result in html.find(".search-results__pageContent li"):
+            image_url = (
+                "https:"
+                + result.find(".search_results--img img", first=True).attrs["src"]
+            )
+            link = result.find(".search_results--link a", first=True)
+
+            url = link.attrs["href"]
+            name = link.text
+
+            price = result.find(".search_results--price", first=True).text.strip()
+            cheapest_price = None
+            if price != "":
+                total = DECIMAL_RE.search(price).group()
+                currency = price.replace(total, "").strip()
+                cheapest_price = Price(
+                    base=None,
+                    discounts=None,
+                    shipping=None,
+                    tax=None,
+                    total=total,
+                    currency=currency,
+                )
+
+            type = name.split(" ")[-2]
+            if type == "Processor":
+                type = "CPU"
+
+            results.append(
+                Part(
+                    name=name,
+                    type=None,
+                    image_urls=[image_url],
+                    url=url,
+                    cheapest_price=cheapest_price,
+                    in_stock=cheapest_price is not None,
+                    vendors=None,
+                    rating=None,
+                    specs=None,
+                )
+            )
+
+        pagination = html.find("#module-pagination", first=True)
+
+        current_page = int(pagination.find(".pagination--current", first=True).text)
+        total_pages = int(pagination.find("li:last-child", first=True).text)
+
+        return PartSearchResult(
+            parts=results, page=current_page, total_pages=total_pages
         )

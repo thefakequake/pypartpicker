@@ -1,18 +1,36 @@
-from asyncio import AbstractEventLoop
 from .scraper import Scraper
-from .part import Part, PartList
+from .part import Part, PartList, PartSearchResult
+from .errors import CloudflareException, RateLimitException
 from requests import Response
 from requests_html import HTMLSession, AsyncHTMLSession
-from typing import Coroutine
+from typing import Coroutine, Optional
+import time
 
 
 class Client:
-    def __init__(self, **kwargs):
-        self.__scraper = Scraper(**kwargs)
+    def __init__(self, max_retries=3, retry_delay=0):
+        self.__scraper = Scraper()
         self.__session = HTMLSession()
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
 
-    def __get_response(self, url: str) -> Response:
-        return self.__session.get(url)
+    def __get_response(self, url: str, retries=0) -> Response:
+        if retries >= self.max_retries:
+            raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
+
+        res = self.__session.get(url)
+
+        # Check if we are being Cloudflare checked
+        if self.__scraper.is_cloudflare(res):
+            res.html.render()
+
+            if self.__scraper.is_cloudflare(res):
+                time.sleep(self.retry_delay)
+                return self.__get_response(url, retries + 1)
+        elif self.__scraper.is_rate_limit(res):
+            raise RateLimitException(f"PCPP rate limit encountered: {url}")
+
+        return res
 
     def get_part(self, id_url: str, region: str = None) -> Part:
         url = self.__scraper.prepare_part_url(id_url, region)
@@ -24,11 +42,20 @@ class Client:
         res = self.__get_response(url)
         return self.__scraper.parse_part_list(res)
 
+    def get_part_search(
+        self, query: str, page: int = 1, region: Optional[str] = None
+    ) -> PartSearchResult:
+        url = self.__scraper.prepare_search_url(query, page, region)
+        res = self.__get_response(url)
+        return self.__scraper.parse_part_search(res)
+
 
 class AsyncClient:
-    def __init__(self, **kwargs):
-        self.__scraper = Scraper(**kwargs)
+    def __init__(self, max_retries=3, retry_delay=0):
+        self.__scraper = Scraper()
         self.__session = None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
 
     async def __aenter__(self):
         self.__session = AsyncHTMLSession()
@@ -37,8 +64,23 @@ class AsyncClient:
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.__session.close()
 
-    async def __get_response(self, url: str) -> Coroutine[None, None, Response]:
-        return await self.__session.get(url)
+    async def __get_response(self, url: str, retries=0) -> Coroutine[None, None, Response]:
+        if retries >= self.max_retries:
+            raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
+
+        res = await self.__session.get(url)
+
+        # Check if we are being Cloudflare checked
+        if self.__scraper.is_cloudflare(res):
+            await res.html.arender()
+
+            if self.__scraper.is_cloudflare(res):
+                time.sleep(self.retry_delay)
+                return self.__get_response(url, retries + 1)
+        elif self.__scraper.is_rate_limit(res):
+            raise RateLimitException(f"PCPP rate limit encountered: {url}")
+
+        return res
 
     async def get_part(
         self, id_url: str, region: str = None
@@ -53,3 +95,10 @@ class AsyncClient:
         url = self.__scraper.prepare_part_list_url(id_url, region)
         res = await self.__get_response(url)
         return self.__scraper.parse_part_list(res)
+
+    async def get_part_search(
+        self, query: str, page: int = 1, region: Optional[str] = None
+    ) -> Coroutine[None, None, PartSearchResult]:
+        url = self.__scraper.prepare_search_url(query, page, region)
+        res = await self.__get_response(url)
+        return self.__scraper.parse_part_search(res)

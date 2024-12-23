@@ -7,6 +7,7 @@ A PCPartPicker data extractor for Python.
 - Fetch product specs, prices and ratings
 - Fetch part lists
 - Supports all PCPartPicker regions
+- Cloudflare bypass with Puppeteer
 
 # Installation
 
@@ -15,7 +16,15 @@ A PCPartPicker data extractor for Python.
 > git checkout 2.0
 ```
 
+# Note
+
+Your first use of the library may install a chromium browser due to Puppeteer.
+
+This is only done once.
+
 # Example
+
+Fetch a product:
 
 ```py
 from pypartpicker import Client
@@ -29,6 +38,25 @@ for spec, value in part.specs.items():
     print(f"{spec}: {value}")
 
 print(part.cheapest_price)
+```
+
+Search parts with pagination:
+
+```py
+from pypartpicker import Client
+
+client = Client()
+page = 1
+
+while True:
+    result = client.get_part_search("ryzen 5", region="uk", page=page)
+
+    for part in result.parts:
+        print(part.name)
+
+    page += 1
+    if page > result.total_pages:
+        break
 ```
 
 # Async Example
@@ -49,5 +77,4 @@ async def get_parts():
 
 
 asyncio.run(get_parts())
-
 ```

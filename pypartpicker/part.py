@@ -55,8 +55,8 @@ class Part:
         type: str,
         image_urls: Optional[list[str]],
         url: Optional[str],
-        cheapest_price: float,
-        in_stock: bool,
+        cheapest_price: Optional[Price],
+        in_stock: Optional[bool],
         vendors: Optional[list[Vendor]] = None,
         rating: Optional[Rating] = None,
         specs: Optional[dict[str, str]] = None,
@@ -89,3 +89,10 @@ class PartList:
         self.estimated_wattage = estimated_wattage
         self.total_price = total_price
         self.currency = currency
+
+
+class PartSearchResult:
+    def __init__(self, parts: list[Part], page: int, total_pages: int):
+        self.parts = parts
+        self.page = page
+        self.total_pages = total_pages
