@@ -12,8 +12,7 @@ A PCPartPicker data extractor for Python.
 # Installation
 
 ```
-> git clone https://github.com/thefakequake/pypartpicker
-> git checkout 2.0
+> git clone -b 2.0 https://github.com/thefakequake/pypartpicker
 ```
 
 # Note
