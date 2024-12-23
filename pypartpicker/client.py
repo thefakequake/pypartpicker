@@ -8,13 +8,21 @@ import time
 
 
 class Client:
-    def __init__(self, max_retries=3, retry_delay=0):
+    def __init__(self, max_retries=3, retry_delay=0, response_retriever=None):
         self.__scraper = Scraper()
         self.__session = HTMLSession()
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
-    def __get_response(self, url: str, retries=0) -> Response:
+        self.__get_response = (
+            response_retriever
+            if response_retriever is not None
+            else self.__default_response_retriever
+        )
+        if not callable(self.__get_response):
+            raise ValueError("response_retriever must be callable.")
+
+    def __default_response_retriever(self, url: str, retries=0) -> Response:
         if retries >= self.max_retries:
             raise CloudflareException(f"Request to {url} failed, max retries exceeded.")
 
@@ -58,11 +66,18 @@ class Client:
 
 
 class AsyncClient:
-    def __init__(self, max_retries=3, retry_delay=0):
+    def __init__(self, max_retries=3, retry_delay=0, response_retriever=None):
         self.__scraper = Scraper()
         self.__session = None
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.__get_response = (
+            response_retriever
+            if response_retriever is not None
+            else self.__default_response_retriever
+        )
+        if not callable(self.__get_response):
+            raise ValueError("response_retriever must be callable.")
 
     async def __aenter__(self):
         self.__session = AsyncHTMLSession()
@@ -71,7 +86,7 @@ class AsyncClient:
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.__session.close()
 
-    async def __get_response(
+    async def __default_response_retriever(
         self, url: str, retries=0
     ) -> Coroutine[None, None, Response]:
         if retries >= self.max_retries:
