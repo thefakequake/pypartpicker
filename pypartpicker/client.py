@@ -112,11 +112,9 @@ class AsyncClient:
         res = await self.__get_response(url)
         return self.__scraper.parse_part_search(res)
 
-
     async def get_part_reviews(
         self, id_url: str, page: int = 1, rating: Optional[int] = None
     ) -> Coroutine[None, None, PartReviewsResult]:
         url = self.__scraper.prepare_part_reviews_url(id_url, page, rating)
         res = await self.__get_response(url)
         return self.__scraper.parse_reviews(res)
-
