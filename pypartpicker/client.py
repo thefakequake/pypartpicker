@@ -14,13 +14,13 @@ class Client:
     def __get_response(self, url: str) -> Response:
         return self.__session.get(url)
 
-    def get_part(self, id_url, **kwargs) -> Part:
-        url = self.__scraper.prepare_part_url(id_url, **kwargs)
+    def get_part(self, id_url: str, region: str = None) -> Part:
+        url = self.__scraper.prepare_part_url(id_url, region)
         res = self.__get_response(url)
         return self.__scraper.parse_part(res)
 
-    def get_part_list(self, id_url, **kwargs) -> PartList:
-        url = self.__scraper.prepare_part_list_url(id_url, **kwargs)
+    def get_part_list(self, id_url: str, region: str = None) -> PartList:
+        url = self.__scraper.prepare_part_list_url(id_url, region)
         res = self.__get_response(url)
         return self.__scraper.parse_part_list(res)
 
@@ -40,12 +40,16 @@ class AsyncClient:
     async def __get_response(self, url: str) -> Coroutine[None, None, Response]:
         return await self.__session.get(url)
 
-    async def get_part(self, id_url, **kwargs) -> Coroutine[None, None, Part]:
-        url = self.__scraper.prepare_part_url(id_url, **kwargs)
+    async def get_part(
+        self, id_url: str, region: str = None
+    ) -> Coroutine[None, None, Part]:
+        url = self.__scraper.prepare_part_url(id_url, region)
         res = await self.__get_response(url)
         return self.__scraper.parse_part(res)
 
-    async def get_part_list(self, id_url, **kwargs) -> Coroutine[None, None, PartList]:
-        url = self.__scraper.prepare_part_list_url(id_url, **kwargs)
+    async def get_part_list(
+        self, id_url: str, region: str = None
+    ) -> Coroutine[None, None, PartList]:
+        url = self.__scraper.prepare_part_list_url(id_url, region)
         res = await self.__get_response(url)
         return self.__scraper.parse_part_list(res)
