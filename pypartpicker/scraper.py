@@ -221,7 +221,11 @@ class Scraper:
             part_link = row.find(".td__name a", first=True)
             url = None
             if part_link is not None:
-                url = part_link.attrs["href"]
+                url = (
+                    "https://"
+                    + urllib.parse.urlparse(res.url).netloc
+                    + part_link.attrs["href"]
+                )
 
             base_price_raw = (
                 row.find(".td__base", first=True).text.replace("Base", "").strip()
@@ -371,7 +375,9 @@ class Scraper:
             )
             link = result.find(".search_results--link a", first=True)
 
-            url = link.attrs["href"]
+            url = (
+                "https://" + urllib.parse.urlparse(res.url).netloc + link.attrs["href"]
+            )
             name = link.text
 
             price = result.find(".search_results--price", first=True).text.strip()
