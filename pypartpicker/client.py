@@ -1,5 +1,5 @@
 from .scraper import Scraper
-from .types import Part, PartList, PartSearchResult
+from .types import Part, PartList, PartSearchResult, PartReviewsResult
 from .errors import CloudflareException, RateLimitException
 from requests import Response
 from requests_html import HTMLSession, AsyncHTMLSession
@@ -51,7 +51,7 @@ class Client:
 
     def get_part_reviews(
         self, id_url: str, page: int = 1, rating: Optional[int] = None
-    ):
+    ) -> PartReviewsResult:
         url = self.__scraper.prepare_part_reviews_url(id_url, page, rating)
         res = self.__get_response(url)
         return self.__scraper.parse_reviews(res)
@@ -111,3 +111,12 @@ class AsyncClient:
         url = self.__scraper.prepare_search_url(query, page, region)
         res = await self.__get_response(url)
         return self.__scraper.parse_part_search(res)
+
+
+    async def get_part_reviews(
+        self, id_url: str, page: int = 1, rating: Optional[int] = None
+    ) -> Coroutine[None, None, PartReviewsResult]:
+        url = self.__scraper.prepare_part_reviews_url(id_url, page, rating)
+        res = await self.__get_response(url)
+        return self.__scraper.parse_reviews(res)
+

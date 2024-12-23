@@ -80,7 +80,7 @@ class Review:
         self.build_url = build_url
 
 
-class PartReviewsResponse:
+class PartReviewsResult:
     def __init__(self, reviews: list[Review], page: int, total_pages: int):
         self.reviews = reviews
         self.page = page

@@ -10,7 +10,7 @@ from .types import (
     PartSearchResult,
     Review,
     User,
-    PartReviewsResponse,
+    PartReviewsResult,
 )
 from .urls import *
 from .regex import *
@@ -247,7 +247,7 @@ class Scraper:
             current_page = 0
             total_pages = 0
 
-        return PartReviewsResponse(
+        return PartReviewsResult(
             reviews=reviews, page=current_page, total_pages=total_pages
         )
 
