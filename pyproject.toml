@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "pypartpicker"
+version = "2.0.0"
+description = ""
+authors = ["QuaKe"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests-html = "^0.10.0"
+lxml = {extras = ["html-clean"], version = "^5.3.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

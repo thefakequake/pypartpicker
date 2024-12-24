@@ -1,487 +1,633 @@
-import asyncio
-import concurrent.futures
-import math
-import re
-from typing import List
-import requests
-from pypartpicker.regex import LIST_REGEX, PRODUCT_REGEX
-
-from bs4 import BeautifulSoup
-from functools import partial
-from urllib.parse import urlparse
-
-
-class Part:
-    def __init__(self, **kwargs):
-        self.name = kwargs.get("name")
-        self.url = kwargs.get("url")
-        self.type = kwargs.get("type")
-        self.price = kwargs.get("price")
-        self.image = kwargs.get("image")
-
-
-class PCPPList:
-    def __init__(self, **kwargs):
-        self.parts = kwargs.get("parts")
-        self.wattage = kwargs.get("wattage")
-        self.total = kwargs.get("total")
-        self.url = kwargs.get("url")
-        self.compatibility = kwargs.get("compatibility")
-
-
-class Product(Part):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.specs = kwargs.get("specs")
-        self.price_list = kwargs.get("price_list")
-        self.rating = kwargs.get("rating")
-        self.reviews = kwargs.get("reviews")
-        self.compatible_parts = kwargs.get("compatible_parts")
-
-
-class Price:
-    def __init__(self, **kwargs):
-        self.value = kwargs.get("value")
-        self.seller = kwargs.get("seller")
-        self.seller_icon = kwargs.get("seller_icon")
-        self.url = kwargs.get("url")
-        self.base_value = kwargs.get("base_value")
-        self.in_stock = kwargs.get("in_stock")
-
-
-class Review:
-    def __init__(self, **kwargs):
-        self.author = kwargs.get("author")
-        self.author_url = kwargs.get("author_url")
-        self.author_icon = kwargs.get("author_icon")
-        self.points = kwargs.get("points")
-        self.created_at = kwargs.get("created_at")
-        self.rating = kwargs.get("rating")
-        self.content = kwargs.get("content")
-
-
-class Verification(Exception):
-    pass
+from typing import Optional
+from requests_html import HTML
+import urllib.parse
+from .types import (
+    Part,
+    Rating,
+    Vendor,
+    Price,
+    PartList,
+    PartSearchResult,
+    Review,
+    User,
+    PartReviewsResult,
+)
+from .urls import *
+from .regex import *
+from requests import Response
 
 
 class Scraper:
-    def __init__(self, **kwargs):
-        headers_dict = kwargs.get(
-            "headers",
-            {
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.63"
-            },
-        )
-        if not isinstance(headers_dict, dict):
-            raise ValueError("Headers kwarg has to be a dict!")
-        self.headers = headers_dict
-        response_retriever = kwargs.get(
-            "response_retriever", self.__default_response_retriever
-        )
-        if not callable(response_retriever):
-            raise ValueError("response_retriever kwarg must be callable!")
-        self.response_retriever = response_retriever
+    def __init__(self):
+        pass
 
-    @staticmethod
-    def __default_response_retriever(url, **kwargs):
-        return requests.get(url, **kwargs)
+    def __get_base_url(self, region: str) -> str:
+        if region == "us":
+            return "https://pcpartpicker.com"
 
-    # Private Helper Function
-    def __make_soup(self, url) -> BeautifulSoup:
-        # sends a request to the URL
-        page = self.response_retriever(url, headers=self.headers)
-        # gets the HTML code for the website and parses it using Python's built in HTML parser
-        soup = BeautifulSoup(page.content, "html.parser")
-        if "Verification" in soup.find(class_="pageTitle").get_text():
-            raise Verification(
-                f"You are being rate limited by PCPartPicker! Slow down your rate of requests, and complete the captcha at this URL: {url}"
-            )
-        # returns the HTML
-        return soup
+        return f"https://{region}.pcpartpicker.com"
 
-    # Private Helper Function
-    # Uses a RegEx to check if the specified string matches the URL format of a valid PCPP parts list
-    def __check_list_url(self, url_str):
-        return re.search(LIST_REGEX, url_str)
+    def is_cloudflare(self, res: Response) -> bool:
+        return res.html.find("title", first=True).text == "Just a moment..."
 
-    # Private Helper Function
-    # Uses a RegEx to check if the specified string matches the URL format of a valid product on PCPP
-    def __check_product_url(self, url_str):
-        return re.search(PRODUCT_REGEX, url_str)
+    def is_rate_limit(self, res: Response) -> bool:
+        title = res.html.find(".pageTitle", first=True)
+        if title is None:
+            return res.html.find("title", first=True).text == "Unavailable"
+        return title.text == "Verification"
 
-    def fetch_list(self, list_url) -> PCPPList:
-        # Ensure a valid pcpartpicker parts list was passed to the function
-        if self.__check_list_url(list_url) is None:
-            raise ValueError(f"'{list_url}' is an invalid PCPartPicker list!")
+    def prepare_part_url(self, id_url: str, region: str = None) -> str:
+        match = PRODUCT_URL_RE.match(id_url)
+        if match is None:
+            url = ID_RE.match(id_url)
+            if url is None:
+                raise ValueError("Invalid pcpartpicker product URL or ID.")
 
-        # fetches the HTML code for the website
-        try:
-            soup = self.__make_soup(list_url)
-        except requests.exceptions.ConnectionError:
-            raise ValueError("Invalid list URL! Max retries exceeded with URL.")
-
-        # gets the code with the table containing all the parts
-        table = soup.find_all("table", {"class": "xs-col-12"}, limit=1)[0]
-
-        # creates an empty list to put the Part objects inside
-        parts = []
-
-        # iterates through every part in the table
-        for item in table.find_all("tr", class_="tr__product"):
-            # creates a new part object using values obtained from the tables' rows
-            part_name = (
-                item.find(class_="td__name").get_text().strip("\n").replace("\n", "")
-            )
-            if "Note:" in part_name:
-                part_name = part_name.split("Note:")[0]
-            if "From parametric filter:" in part_name:
-                part_name = part_name.split("From parametric filter:")[0]
-            if "From parametric selection:" in part_name:
-                part_name = part_name.split("From parametric selection:")[0]
-
-            if image := item.find("img", class_=""):
-                image: dict[str, str]
-                image = ("https://" + image["src"]).replace(
-                    "https://https://", "https://"
-                )
-
-            part_object = Part(
-                name=part_name,
-                price=item.find(class_="td__price")
-                .get_text()
-                .strip("\n")
-                .replace("No Prices Available", "None")
-                .replace("Price", "")
-                .strip("\n"),
-                type=item.find(class_="td__component").get_text().strip("\n").strip(),
-                image=image,
-            )
-            # converts string representation of 'None' to NoneType
-            if part_object.price == "None":
-                part_object.price = None
-            # checks if the product row has a product URL inside
-            if "href" in str(item.find(class_="td__name")):
-                # adds the product URL to the Part object
-                part_object.url = (
-                    "https://"
-                    + urlparse(list_url).netloc
-                    + item.find(class_="td__name")
-                    .find("a")["href"]
-                    .replace("/placeholder-", "")
-                )
-            # adds the part object to the list
-            parts.append(part_object)
-
-        # gets the estimated wattage for the list
-        wattage = (
-            soup.find(class_="partlist__keyMetric")
-            .get_text()
-            .replace("Estimated Wattage:", "")
-            .strip("\n")
-        )
-
-        # gets the total cost for the list
-        total_cost = (
-            table.find("tr", class_="tr__total tr__total--final")
-            .find(class_="td__price")
-            .get_text()
-        )
-
-        # gets the compatibility notes for the list
-        compatibilitynotes = [
-            a.get_text().strip("\n").replace("Note:", "").replace("Warning!", "")
-            for a in soup.find_all("li", class_=["info-message", "warning-message"])
-        ]
-
-        # returns a PCPPList object containing all the information
-        return PCPPList(
-            parts=parts,
-            wattage=wattage,
-            total=total_cost,
-            url=list_url,
-            compatibility=compatibilitynotes,
-        )
-
-    def part_search(self, search_term, **kwargs) -> List[Part]:
-        search_term = search_term.replace(" ", "+")
-        limit = kwargs.get("limit", 20)
-
-        # makes sure limit is an integer, raises ValueError if it's not
-        if not isinstance(limit, int):
-            raise ValueError("Product limit must be an integer!")
-
-        # checks if the region given is a string, and checks if it is a country code
-        if (
-            not isinstance(kwargs.get("region", "us"), str)
-            or len(kwargs.get("region", "us")) != 2
-        ):
-            raise ValueError("Invalid region!")
-
-        if limit < 0:
-            raise ValueError("Limit out of range.")
-
-        # constructs the search URL
-        if kwargs.get("region") in ("us", None):
-            search_link = f"https://pcpartpicker.com/search/?q={search_term}"
+            id_url = url.group(1)
+            region = "us"
         else:
-            search_link = f"https://{kwargs.get('region', '')}.pcpartpicker.com/search/?q={search_term}"
+            region = "us" if match.group(2) is None else match.group(2)[:-1]
+            id_url = match.group(3)
 
-        iterations = math.ceil(limit / 20)
+        if id_url is None:
+            raise ValueError("Invalid pcpartpicker product URL or ID.")
 
-        # creates an empty list for the part objects to be stored in
-        parts = []
+        return self.__get_base_url(region) + PRODUCT_PATH + id_url
 
-        for i in range(iterations):
-            try:
-                soup = self.__make_soup(f"{search_link}&page={i + 1}")
-            except requests.exceptions.ConnectionError:
-                raise ValueError("Invalid region! Max retries exceeded with URL.")
+    def parse_part(self, res: Response) -> Part:
+        html: HTML = res.html
+        title_container = html.find(".wrapper__pageTitle", first=True)
+        sidebar = html.find(".sidebar-content", first=True)
 
-            # checks if the page redirects to a product page
-            if soup.find(class_="pageTitle").get_text() != "Product Search":
-                # creates a part object with the information from the product page
-                part_object = Part(
-                    name=soup.find(class_="pageTitle").get_text(),
-                    url=search_link,
-                    price=None,
-                )
+        # Part name and type
+        type = title_container.find(".breadcrumb", first=True).text
+        name = title_container.find(".pageTitle", first=True).text
 
-                # searches for the pricing table
-                table = soup.find("table", class_="xs-col-12")
+        # Rating
+        rating = None
+        star_container = title_container.find(".product--rating", first=True)
+        if star_container is not None:
+            stars = (
+                len(star_container.find(".shape-star-full"))
+                + len(star_container.find(".shape-star-half")) * 0.5
+            )
+            rating_info = PRODUCT_RATINGS_RE.match(
+                title_container.find("section div:has(ul)", first=True).text
+            )
+            count = rating_info.group(1)
+            average = rating_info.group(2)
+            rating = Rating(stars, int(count), float(average))
 
-                # loops through every row in the table
-                for row in table.find_all("tr"):
-                    # first conditional statement makes sure its not the top row with the table parameters, second checks if the product is out of stock
-                    if (
-                        not "td__availability" in str(row)
-                        or "Out of stock"
-                        in row.find(class_="td__availability").get_text()
-                    ):
-                        # skips this iteration
-                        continue
-
-                    # sets the price of the price object to the price
-                    part_object.price = (
-                        row.find(class_="td__finalPrice")
-                        .get_text()
-                        .strip("\n")
-                        .strip("+")
-                    )
-
-                    break
-
-                # returns the part object
-                return [part_object]
-
-            # gets the section of the website's code with the search results
-            section = soup.find("section", class_="search-results__pageContent")
-
-            if "No results" in section.get_text():
-                break
-
-            # iterates through all the HTML elements that match the given the criteria
-            for product in section.find_all("ul", class_="list-unstyled"):
-                # extracts the product data from the HTML code and creates a part object with that information
-                part_object = Part(
-                    name=product.find("p", class_="search_results--link")
-                    .get_text()
-                    .strip(),
-                    url="https://"
-                    + urlparse(search_link).netloc
-                    + product.find("p", class_="search_results--link").find(
-                        "a", href=True
-                    )["href"],
-                    image=("https://" + product.find("img")["src"].strip("/")).replace(
-                        "https://https://", "https://"
-                    ),
-                )
-                part_object.price = (
-                    product.find(class_="search_results--price").get_text().strip()
-                )
-
-                if part_object.price == "":
-                    part_object.price = None
-
-                # adds the part object to the list
-                parts.append(part_object)
-
-        # returns the part objects
-        return parts[: kwargs.get("limit", 20)]
-
-    def fetch_product(self, part_url) -> Product:
-        # Ensure a valid product page was passed to the function
-        if self.__check_product_url(part_url) is None:
-            raise ValueError("Invalid product URL!")
-
-        try:
-            soup = self.__make_soup(part_url)
-        except requests.exceptions.ConnectionError:
-            raise ValueError("Invalid product URL! Max retries exceeded with URL.")
-
-        specs_block = soup.find(class_="block xs-hide md-block specs")
-
+        # Specs
         specs = {}
-        prices = []
-        price = None
+        for spec in sidebar.find(".group--spec"):
+            spec_title = spec.find(".group__title", first=True).text
+            spec_value = spec.find(".group__content", first=True).text
+            specs[spec_title] = spec_value
 
-        # finds the table with the pricing information
-        table = soup.find("table", class_="xs-col-12")
-        section = table.find("tbody")
-
-        for row in section.find_all("tr"):
-            # skip over empty row
-            if "tr--noBorder" in str(row):
-                continue
-            # creates a Price object with all the information
-            price_object = Price(
-                value=row.find(class_="td__finalPrice").get_text().strip("\n"),
-                seller=row.find(class_="td__logo").find("img")["alt"],
-                seller_icon=(
-                    "https://" + row.find(class_="td__logo").find("img")["src"][1:]
-                ).replace("https://https://", "https://"),
-                base_value=row.find(class_="td__base priority--2").get_text(),
-                url="https://"
-                + urlparse(part_url).netloc
-                + row.find(class_="td__finalPrice").find("a")["href"],
-                in_stock=True
-                if "In stock" in row.find(class_="td__availability").get_text()
-                else False,
+        # Images
+        image_urls = []
+        thumbnails = sidebar.find(".product__image-2024-thumbnails", first=True)
+        if thumbnails is None:
+            image_urls.append(
+                "https:"
+                + sidebar.find(".product__image-2024 img", first=True).attrs["src"]
             )
-            # chceks if its the cheapest in stock price
-            if (
-                price is None
-                and "In stock" in row.find(class_="td__availability").get_text()
-            ):
-                price = row.find(class_="td__finalPrice").get_text().strip("\n")
-            prices.append(price_object)
+        else:
+            for image in thumbnails.find("img"):
+                image_base_url = "https:" + image.attrs["src"].split(".256p.jpg")[0]
+                image_urls.append(image_base_url + ".1600.jpg")
 
-        # adds spec keys and values to the specs dictionary
-        for spec in specs_block.find_all("div", class_="group group--spec"):
-            specs[spec.find("h3", class_="group__title").get_text()] = (
-                spec.find("div", class_="group__content")
-                .get_text()
-                .strip()
-                .strip("\n")
-                .replace("\u00b3", "")
-                .replace('"', "")
-                .split("\n")
+        # Vendors
+        vendors = []
+        for row in html.find("#prices table tbody tr:not(.tr--noBorder)"):
+            vendor_image = row.find(".td__logo img", first=True)
+            logo_url = "https:" + vendor_image.attrs["src"]
+            vendor_name = vendor_image.attrs["alt"]
+
+            # Vendor price
+            base_price_raw = row.find(".td__base", first=True).text
+            base_price = DECIMAL_RE.search(base_price_raw).group()
+            currency = base_price_raw.replace(base_price, "").strip()
+
+            # Discounts, shipping, tax and total price
+            promo = (
+                row.find(".td__promo", first=True).text.replace(currency, "").strip()
+            )
+            if promo == "":
+                promo = "0"
+
+            shipping_raw = row.find(".td__shipping", first=True)
+            shipping = (
+                0
+                if "FREE" in shipping_raw.text
+                or shipping_raw.text.strip() == ""
+                or shipping_raw.find("img", first=True) is not None
+                else DECIMAL_RE.search(shipping_raw.text).group()
+            )
+            tax = row.find(".td__tax", first=True).text.replace(currency, "").strip()
+            if tax == "":
+                tax = "0"
+
+            final = row.find(".td__finalPrice a", first=True)
+            total_price = final.text.replace(currency, "").strip().removesuffix("+")
+
+            # Availability and buy url
+            in_stock = row.find(".td__availability--inStock", first=True) is not None
+            buy_url = final.attrs["href"]
+
+            vendors.append(
+                Vendor(
+                    name=vendor_name,
+                    logo_url=logo_url,
+                    in_stock=in_stock,
+                    price=Price(
+                        base=float(base_price),
+                        discounts=float(promo),
+                        shipping=float(shipping),
+                        tax=float(tax),
+                        total=float(total_price),
+                        currency=currency,
+                    ),
+                    buy_url=buy_url,
+                )
             )
 
-        reviews = None
+        cheapest_price = None
+        in_stock = False
 
-        # gets the HTML code for the box containing reviews
-        review_box = soup.find(class_="block partReviews")
+        available_vendors = list(filter(lambda v: v.in_stock, vendors))
+        if len(available_vendors) > 0:
+            in_stock = True
+            cheapest_price = sorted(available_vendors, key=lambda v: v.price.total)[
+                0
+            ].price
 
-        # skips over this process if the review box does not exist
-        if review_box is not None:
-            reviews = []
+        base_url = "https://" + urllib.parse.urlparse(res.url).netloc
 
-            # counts stars in reviews
-            for review in review_box.find_all(class_="partReviews__review"):
-                stars = 0
-                for _ in review.find(class_="shape-star-full"):
-                    stars += 1
+        reviews = []
+        for review in html.find(".partReviews .partReviews__review"):
+            reviews.append(self.parse_review(review, base_url))
 
-                # gets the upvotes and timestamp
-                iterations = 0
-
-                for info in review.find(
-                    class_="userDetails__userData list-unstyled"
-                ).find_all("li"):
-                    if iterations == 0:
-                        points = (
-                            info.get_text().replace(" points", "").replace(" point", "")
-                        )
-                    elif iterations == 1:
-                        created_at = info.get_text().replace(" ago", "")
-                    else:
-                        break
-                    iterations += 1
-
-                # creates review object with all the information
-                review_object = Review(
-                    author=review.find(class_="userDetails__userName").get_text(),
-                    author_url="https://"
-                    + urlparse(part_url).netloc
-                    + review.find(class_="userDetails__userName").find("a")["href"],
-                    author_icon="https://"
-                    + urlparse(part_url).netloc
-                    + review.find(class_="userAvatar userAvatar--entry").find("img")[
-                        "src"
-                    ],
-                    content=review.find(
-                        class_="partReviews__writeup markdown"
-                    ).get_text(),
-                    rating=stars,
-                    points=points,
-                    created_at=created_at,
-                )
-
-                reviews.append(review_object)
-
-        compatible_parts = None
-        # fetches section with compatible parts hyperlinks
-        compatible_parts_list = soup.find(class_="compatibleParts__list list-unstyled")
-        if compatible_parts_list is not None:
-            compatible_parts = []
-            # finds every list item in the section
-            for item in compatible_parts_list.find_all("li"):
-                compatible_parts.append(
-                    (
-                        item.find("a").get_text(),
-                        "https://" + urlparse(part_url).netloc + item.find("a")["href"],
-                    )
-                )
-
-        # creates the product object to return
-        product_object = Product(
-            name=soup.find(class_="pageTitle").get_text(),
-            url=part_url,
-            image=None,
+        return Part(
+            name=name,
+            type=type,
+            image_urls=image_urls,
+            url=res.url,
+            cheapest_price=cheapest_price,
+            in_stock=in_stock,
+            vendors=vendors,
+            rating=rating,
             specs=specs,
-            price_list=prices,
-            price=price,
-            rating=soup.find(class_="actionBox-2023 actionBox__ratings")
-            .find(class_="product--rating list-unstyled")
-            .get_text()
-            .strip("\n")
-            .strip()
-            .strip("()"),
             reviews=reviews,
-            compatible_parts=compatible_parts,
-            type=soup.find(class_="breadcrumb")
-            .find(class_="list-unstyled")
-            .find("li")
-            .get_text(),
         )
 
-        image_box = soup.find(class_="single_image_gallery_box")
+    def parse_review(self, review: HTML, base_url: str) -> Review:
+        user_details = review.find(".userDetails", first=True)
+        avatar_url = user_details.find("img", first=True).attrs["src"]
+        if avatar_url.startswith("//"):
+            avatar_url = "https:" + avatar_url
+        else:
+            avatar_url = base_url + avatar_url
 
-        if image_box is not None:
-            # adds image to object if it finds one
-            product_object.image = image_box.find("img")["src"].replace(
-                "https://https://", "https://"
+        name_container = user_details.find(".userDetails__userName a", first=True)
+        profile_url = base_url + name_container.attrs["href"]
+        username = name_container.text
+
+        user_data = user_details.find(".userDetails__userData", first=True)
+        points = int(user_data.find("li:first-child", first=True).text.split(" ")[0])
+        created_at = user_data.find("li:last-child", first=True).text
+
+        review_name = review.find(".partReviews__name", first=True)
+        stars = len(review_name.find(".product--rating .shape-star-full"))
+
+        build_name = None
+        build_url = None
+        build_a = review_name.find("a", first=True)
+        if build_a is not None:
+            build_name = build_a.text
+            build_url = base_url + build_a.attrs["href"]
+
+        content = review.find(".partReviews__writeup", first=True).text
+
+        return Review(
+            author=User(username, avatar_url, profile_url),
+            points=points,
+            stars=stars,
+            created_at=created_at,
+            content=content,
+            build_name=build_name,
+            build_url=build_url,
+        )
+
+    def prepare_part_reviews_url(
+        self,
+        id_url: str,
+        page: int = 1,
+        rating: Optional[int] = None,
+    ):
+        base = self.prepare_part_url(id_url)
+        if rating is None:
+            return f"{base}{PART_REVIEWS_PATH}?page={page}"
+        return f"{base}{PART_REVIEWS_PATH}?page={page}&rating={rating}"
+
+    def parse_reviews(self, res: Response):
+        html: HTML = res.html
+        base_url = "https://" + urllib.parse.urlparse(res.url).netloc
+        reviews = []
+        for review in html.find(".partReviews .partReviews__review"):
+            reviews.append(self.parse_review(review, base_url))
+
+        pagination = html.find("#module-pagination", first=True)
+
+        try:
+            current_page = int(pagination.find(".pagination--current", first=True).text)
+            total_pages = int(pagination.find("li:last-child", first=True).text)
+        except AttributeError:
+            current_page = 0
+            total_pages = 0
+
+        return PartReviewsResult(
+            reviews=reviews, page=current_page, total_pages=total_pages
+        )
+
+    def prepare_part_list_url(self, id_url: str, region: str = None) -> str:
+        match = PART_LIST_URL_RE.match(id_url)
+        override_region = region
+        if match is None:
+            url = ID_RE.match(id_url)
+            if url is None:
+                raise ValueError("Invalid pcpartpicker part list URL or ID.")
+
+            id_url = url.group(1)
+            region = "us"
+        else:
+            region = "us" if match.group(2) is None else match.group(2)[:-1]
+            id_url = match.group(3)
+
+        if override_region is not None:
+            region = override_region
+
+        if id_url is None:
+            raise ValueError("Invalid pcpartpicker part list URL or ID.")
+
+        return self.__get_base_url(region) + PART_LIST_PATH + id_url
+
+    def parse_part_list(self, res: Response) -> PartList:
+        html: HTML = res.html
+        wrapper = html.find(".partlist__wrapper", first=True)
+        part_list = html.find(".partlist", first=True)
+
+        estimated_wattage = (
+            wrapper.find(".partlist__keyMetric", first=True)
+            .text.removeprefix("Estimated Wattage:")
+            .strip()
+        )
+
+        # Parts
+        parts = []
+        for row in part_list.find("table tbody tr.tr__product"):
+            type = row.find(".td__component", first=True).text.strip()
+
+            image = row.find(".td__image img", first=True)
+            image_urls = []
+            if image is not None:
+                image_urls = [image.attrs["src"]]
+
+            name = "\n".join(
+                filter(
+                    lambda s: len(s) > 0,
+                    (
+                        row.find(".td__name", first=True)
+                        .text.replace("From parametric selection:", "")
+                        .strip()
+                    ).split("\n"),
+                )
+            )
+            part_link = row.find(".td__name a", first=True)
+            url = None
+            if part_link is not None:
+                url = (
+                    "https://"
+                    + urllib.parse.urlparse(res.url).netloc
+                    + part_link.attrs["href"]
+                )
+
+            base_price_raw = (
+                row.find(".td__base", first=True).text.replace("Base", "").strip()
+            )
+            base_price = (
+                None
+                if base_price_raw == ""
+                else DECIMAL_RE.search(base_price_raw).group()
+            )
+            currency = (
+                None if base_price is None else base_price_raw.replace(base_price, "")
             )
 
-        return product_object
+            vendors = []
+            in_stock = False
+            total_price = None
 
-    async def aio_part_search(self, search_term, **kwargs):
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            result = await asyncio.get_event_loop().run_in_executor(
-                pool, partial(self.part_search, search_term, **kwargs)
-            )
-        return result
+            # Price parsing is painful... they're often missing or contain weird invisible text artefacts
+            if base_price is not None:
+                promo_raw = row.find(".td__promo", first=True).text
+                promo = float(
+                    0
+                    if currency not in promo_raw
+                    else DECIMAL_RE.search(promo_raw).group()
+                )
 
-    async def aio_fetch_list(self, list_url):
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            result = await asyncio.get_event_loop().run_in_executor(
-                pool, self.fetch_list, list_url
-            )
-        return result
+                shipping_raw = row.find(".td__shipping", first=True).text.strip()
+                shipping = float(
+                    0
+                    if "FREE" in shipping_raw
+                    or shipping_raw == ""
+                    or currency not in shipping_raw
+                    else DECIMAL_RE.search(shipping_raw).group()
+                )
 
-    async def aio_fetch_product(self, part_url):
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            result = await asyncio.get_event_loop().run_in_executor(
-                pool, self.fetch_product, part_url
+                tax_raw = row.find(".td__tax", first=True).text.strip()
+                tax = float(
+                    0
+                    if tax_raw == "" or currency not in tax_raw
+                    else DECIMAL_RE.search(tax_raw).group()
+                )
+
+                total_price = float(
+                    DECIMAL_RE.search(row.find(".td__price", first=True).text).group()
+                )
+                in_stock = True
+
+                vendor = row.find(".td__where a", first=True)
+                buy_url = vendor.attrs["href"]
+                vendor_logo = vendor.find("img", first=True)
+                vendor_name = vendor_logo.attrs["alt"]
+                logo_url = "https:" + vendor_logo.attrs["src"]
+
+                vendors = [
+                    Vendor(
+                        name=vendor_name,
+                        logo_url=logo_url,
+                        in_stock=in_stock,
+                        price=Price(
+                            None if base_price is None else float(base_price),
+                            None if promo is None else -promo,
+                            shipping,
+                            tax,
+                            total_price,
+                            currency,
+                        ),
+                        buy_url=buy_url,
+                    )
+                ]
+            else:
+                total_price_raw = row.find(".td__price", first=True).text.strip()
+                if (
+                    "No Prices Available" not in total_price_raw
+                    and total_price_raw != ""
+                ):
+                    total_price = DECIMAL_RE.search(total_price_raw).group()
+                    currency = (
+                        total_price_raw.replace(total_price, "")
+                        .replace("Price", "")
+                        .strip()
+                    )
+                    total_price = float(total_price)
+
+            parts.append(
+                Part(
+                    name,
+                    type,
+                    image_urls,
+                    url,
+                    (
+                        Price(
+                            base=base_price,
+                            discounts=0,
+                            shipping=0,
+                            tax=0,
+                            total=total_price,
+                            currency=currency,
+                        )
+                        if total_price is not None
+                        else (
+                            None
+                            if vendors == []
+                            else None if currency is None else vendors[0].price
+                        )
+                    ),
+                    in_stock,
+                    vendors=vendors,
+                    rating=None,
+                    specs=None,
+                )
             )
-        return result
+
+        currency = None
+        total_price = 0
+        total = part_list.find(".tr__total--final .td__price", first=True)
+        if total is not None:
+            total_price = DECIMAL_RE.search(total.text).group()
+            currency = total.text.replace(total_price, "").strip()
+
+        return PartList(
+            parts=parts,
+            url=res.url,
+            estimated_wattage=estimated_wattage,
+            total_price=float(total_price),
+            currency=currency,
+        )
+
+    def prepare_search_url(self, query: str, page: int, region: Optional[str] = "us"):
+        return (
+            self.__get_base_url(region)
+            + SEARCH_PATH
+            + f"?q={urllib.parse.quote(query)}&page={page}"
+        )
+
+    def parse_part_search(self, res: Response) -> PartSearchResult:
+        html: HTML = res.html
+
+        # Case for which the search redirects to the product page
+        if html.find(".pageTitle", first=True).text != "Product Search":
+            return [self.parse_part(res)]
+
+        results = []
+        for result in html.find(".search-results__pageContent li"):
+            image_url = (
+                "https:"
+                + result.find(".search_results--img img", first=True).attrs["src"]
+            )
+            link = result.find(".search_results--link a", first=True)
+
+            url = (
+                "https://" + urllib.parse.urlparse(res.url).netloc + link.attrs["href"]
+            )
+            name = link.text
+
+            price = result.find(".search_results--price", first=True).text.strip()
+            cheapest_price = None
+            if price != "":
+                total = DECIMAL_RE.search(price).group()
+                currency = price.replace(total, "").strip()
+                cheapest_price = Price(
+                    base=None,
+                    discounts=None,
+                    shipping=None,
+                    tax=None,
+                    total=total,
+                    currency=currency,
+                )
+
+            type = None
+
+            match "(".join(name.split("(")[:-1]).split(" ")[-4:-1]:
+                case [*_, "Processor"]:
+                    type = "CPU"
+                case [_, "Fan", "Controller"]:
+                    type = "Fan Controller"
+                case [_, "Network", "Adapter"]:
+                    type = "Wired Network Adapter"
+                case [_, "Wi-Fi", "Adapter"]:
+                    type = "Wireless Network Adapter"
+                case [_, "Video", "Card"]:
+                    type = "Video Card"
+                case [_, "CPU", "Cooler"]:
+                    type = "CPU Cooler"
+                case [_, "Power", "Supply"]:
+                    type = "Power Supply"
+                case [_, "Thermal", "Paste"]:
+                    type = "Thermal Compound"
+                case [_, "Sound", "Card"]:
+                    type = "Sound Card"
+                case [_, "Fans", _] | [*_, "Fan"]:
+                    type = "Case Fan"
+                case ["External", _, _] | [_, "External", _]:
+                    type = "External Storage"
+                case [*_, "Writer"]:
+                    type = "Optical Drive"
+                case [*_, "Headset"] | [*_, "Headphones"]:
+                    type = "Headphones"
+                case ["Solid", "State", "Drive"] | [_, "Hard", "Drive"]:
+                    type = "Storage"
+                case [*_, a]:
+                    type = a
+            if "Windows" in name:
+                type = "Operating System"
+
+            results.append(
+                Part(
+                    name=name,
+                    type=type,
+                    image_urls=[image_url],
+                    url=url,
+                    cheapest_price=cheapest_price,
+                    in_stock=cheapest_price is not None,
+                    vendors=None,
+                    rating=None,
+                    specs=None,
+                )
+            )
+
+        pagination = html.find("#module-pagination", first=True)
+
+        try:
+            current_page = int(pagination.find(".pagination--current", first=True).text)
+            total_pages = int(pagination.find("li:last-child", first=True).text)
+        except AttributeError:
+            current_page = 0
+            total_pages = 0
+
+        return PartSearchResult(
+            parts=results, page=current_page, total_pages=total_pages
+        )
+
+    # def prepare_parts_url(
+    #     self,
+    #     product_path: str,
+    #     page: int = 1,
+    #     region: Optional[str] = "us",
+    #     compatible_with: Optional[str] = None,
+    # ):
+    #     if product_path not in PRODUCT_PATHS:
+    #         raise ValueError(f"Invalid product path: {product_path}")
+    #     region = "us" if region is None else region
+
+    #     if compatible_with is not None:
+    #         # Extract ID from part URL/ID
+    #         id = self.prepare_part_url(compatible_with).rsplit("/", 1)[-1]
+    #         return f"{self.__get_base_url(region)}{PRODUCTS_PATH}{product_path}?page={page}&compatible_with={id}"
+
+    #     return f"{self.__get_base_url(region)}{PRODUCTS_PATH}{product_path}?page={page}"
+
+    # def parse_parts(self, res: Response) -> PartSearchResult:
+    #     html: HTML = res.html
+    #     table = html.find("#paginated_table", first=True)
+    #     base_url = "https://" + urllib.parse.urlparse(res.url).netloc
+
+    #     type = html.find(".pageTitle", first=True).text.removeprefix("Choose A").strip()
+
+    #     spec_titles = []
+    #     for header in table.find("thead .th--sortable"):
+    #         if header.text in ("Name", "Rating"):
+    #             continue
+    #         spec_titles.append(header.text)
+
+    #     parts = []
+
+    #     for row in table.find("tbody tr"):
+    #         name_a = row.find(".td__name", first=True)
+    #         name = name_a.text
+    #         url = base_url + name_a.attrs["href"]
+    #         image_url = name_a.find("img", first=True).attrs["src"]
+
+    #         specs = {}
+    #         for spec_key, spec_val in zip(spec_titles, row.find(".td__spec")):
+    #             specs[spec_key] = spec_val.text
+
+    #         rating_container = row.find(".td__rating")
+    #         ratings_count = int(rating_container.text.strip("()"))
+    #         stars = (
+    #             len(rating_container.find(".shape-star-full"))
+    #             + len(rating_container.find(".shape-star-half")) * 0.5
+    #         )
+
+    #         rating = Rating(stars=stars, count=ratings_count, average=None)
+
+    #         cheapest_price = None
+    #         in_stock = False
+    #         total_price_raw = row.find(".td__price").text.removesuffix("Add").strip()
+    #         if total_price_raw is not None:
+    #             total_price = DECIMAL_RE.search(total_price_raw)
+    #             currency = total_price_raw.replace(total_price, "")
+    #             cheapest_price = Price(
+    #                 None, None, None, None, float(total_price), currency
+    #             )
+    #             in_stock = True
+
+    #         parts.append(
+    #             Part(
+    #                 name=name,
+    #                 type=type,
+    #                 image_urls=[image_url],
+    #                 url=url,
+    #                 cheapest_price=cheapest_price,
+    #                 in_stock=in_stock,
+    #                 vendors=None,
+    #                 rating=rating,
+    #                 specs=specs,
+    #                 reviews=None,
+    #             )
+    #         )
+
+    #     pagination = html.find("#module-pagination", first=True)
+
+    #     try:
+    #         current_page = int(pagination.find(".pagination--current", first=True).text)
+    #         total_pages = int(pagination.find("li:last-child", first=True).text)
+    #     except AttributeError:
+    #         current_page = 0
+    #         total_pages = 0
+
+    #     return PartSearchResult(parts=parts, page=current_page, total_pages=total_pages)
