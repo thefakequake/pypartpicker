@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypartpicker"
-version = "0.1.0"
+version = "2.0.0"
 description = ""
 authors = ["QuaKe"]
 readme = "README.md"
