@@ -105,7 +105,8 @@ Represents a client for interacting with parts-related data and making HTTP requ
 - **`max_retries`**: `int` – The maximum number of retries for requests. Default is `3`.
 - **`retry_delay`**: `int` – The delay between retries in seconds. Default is `0`.
 - **`cookies`**: `Optional[dict]` – Cookies to include in requests.
-- **`response_retriever`**: `Optional[Callable]` – A custom function to retrieve responses. Must be callable.
+- **`response_retriever`**: `Optional[Callable]` – A custom function to perform a request, overriding the default one. 
+Can be used to implement proxy rotation and custom scraping measures.
 
 ---
 
