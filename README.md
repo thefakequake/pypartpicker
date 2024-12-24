@@ -11,6 +11,24 @@ A PCPartPicker data extractor for Python.
 - Support for all regions
 - Customisable scraping
 
+# Table of Contents
+
+- [Installation](#installation)
+- [Examples](#examples)
+- [Documentation](#documentation)
+  - [Client](#client)
+  - [Part](#part)
+  - [PartList](#part-list)
+  - [PartSearchResult](#part-search-result)
+  - [PartReviewsResult](#part-reviews-result)
+  - [Price](#price)
+  - [Vendor](#vendor)
+  - [Rating](#rating)
+  - [Review](#review)
+  - [User](#user)
+  - [Supported Regions](#regions)
+  - [Supported Product Types](#types)
+
 # Installation
 
 ```bash
@@ -146,7 +164,8 @@ Fetches reviews for a specific part.
 - **Returns**: [`PartReviewsResult`](#part-reviews-result) – The reviews for the specified part.
 
 ---
-<!-- 
+
+<!--
 #### `get_parts(product_path: str, page: int = 1, region: Optional[str] = None, compatible_with: Optional[str] = None) -> PartSearchResult`
 
 Fetches parts of a specific product type.
