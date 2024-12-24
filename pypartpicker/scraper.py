@@ -33,7 +33,7 @@ class Scraper:
     def is_rate_limit(self, res: Response) -> bool:
         title = res.html.find(".pageTitle", first=True)
         if title is None:
-            return False
+            return res.html.find("title", first=True).text == "Unavailable"
         return title.text == "Verification"
 
     def prepare_part_url(self, id_url: str, region: str = None) -> str:
@@ -52,7 +52,7 @@ class Scraper:
         if id_url is None:
             raise ValueError("Invalid pcpartpicker product URL or ID.")
 
-        return self.__get_base_url(region) + BASE_PRODUCT_PATH + id_url
+        return self.__get_base_url(region) + PRODUCT_PATH + id_url
 
     def parse_part(self, res: Response) -> Part:
         html: HTML = res.html
@@ -228,8 +228,8 @@ class Scraper:
     ):
         base = self.prepare_part_url(id_url)
         if rating is None:
-            return f"{base}{BASE_PART_REVIEWS_PATH}?page={page}"
-        return f"{base}{BASE_PART_REVIEWS_PATH}?page={page}&rating={rating}"
+            return f"{base}{PART_REVIEWS_PATH}?page={page}"
+        return f"{base}{PART_REVIEWS_PATH}?page={page}&rating={rating}"
 
     def parse_reviews(self, res: Response):
         html: HTML = res.html
@@ -271,7 +271,7 @@ class Scraper:
         if id_url is None:
             raise ValueError("Invalid pcpartpicker part list URL or ID.")
 
-        return self.__get_base_url(region) + BASE_PART_LIST_PATH + id_url
+        return self.__get_base_url(region) + PART_LIST_PATH + id_url
 
     def parse_part_list(self, res: Response) -> PartList:
         html: HTML = res.html
@@ -439,10 +439,10 @@ class Scraper:
             currency=currency,
         )
 
-    def prepare_search_url(self, query: str, page: int, region: Optional[str]):
+    def prepare_search_url(self, query: str, page: int, region: Optional[str] = "us"):
         return (
-            self.__get_base_url("us" if region is None else region)
-            + BASE_SEARCH_PATH
+            self.__get_base_url(region)
+            + SEARCH_PATH
             + f"?q={urllib.parse.quote(query)}&page={page}"
         )
 
@@ -542,3 +542,92 @@ class Scraper:
         return PartSearchResult(
             parts=results, page=current_page, total_pages=total_pages
         )
+
+    # def prepare_parts_url(
+    #     self,
+    #     product_path: str,
+    #     page: int = 1,
+    #     region: Optional[str] = "us",
+    #     compatible_with: Optional[str] = None,
+    # ):
+    #     if product_path not in PRODUCT_PATHS:
+    #         raise ValueError(f"Invalid product path: {product_path}")
+    #     region = "us" if region is None else region
+
+    #     if compatible_with is not None:
+    #         # Extract ID from part URL/ID
+    #         id = self.prepare_part_url(compatible_with).rsplit("/", 1)[-1]
+    #         return f"{self.__get_base_url(region)}{PRODUCTS_PATH}{product_path}?page={page}&compatible_with={id}"
+
+    #     return f"{self.__get_base_url(region)}{PRODUCTS_PATH}{product_path}?page={page}"
+
+    # def parse_parts(self, res: Response) -> PartSearchResult:
+    #     html: HTML = res.html
+    #     table = html.find("#paginated_table", first=True)
+    #     base_url = "https://" + urllib.parse.urlparse(res.url).netloc
+
+    #     type = html.find(".pageTitle", first=True).text.removeprefix("Choose A").strip()
+
+    #     spec_titles = []
+    #     for header in table.find("thead .th--sortable"):
+    #         if header.text in ("Name", "Rating"):
+    #             continue
+    #         spec_titles.append(header.text)
+
+    #     parts = []
+
+    #     for row in table.find("tbody tr"):
+    #         name_a = row.find(".td__name", first=True)
+    #         name = name_a.text
+    #         url = base_url + name_a.attrs["href"]
+    #         image_url = name_a.find("img", first=True).attrs["src"]
+
+    #         specs = {}
+    #         for spec_key, spec_val in zip(spec_titles, row.find(".td__spec")):
+    #             specs[spec_key] = spec_val.text
+
+    #         rating_container = row.find(".td__rating")
+    #         ratings_count = int(rating_container.text.strip("()"))
+    #         stars = (
+    #             len(rating_container.find(".shape-star-full"))
+    #             + len(rating_container.find(".shape-star-half")) * 0.5
+    #         )
+
+    #         rating = Rating(stars=stars, count=ratings_count, average=None)
+
+    #         cheapest_price = None
+    #         in_stock = False
+    #         total_price_raw = row.find(".td__price").text.removesuffix("Add").strip()
+    #         if total_price_raw is not None:
+    #             total_price = DECIMAL_RE.search(total_price_raw)
+    #             currency = total_price_raw.replace(total_price, "")
+    #             cheapest_price = Price(
+    #                 None, None, None, None, float(total_price), currency
+    #             )
+    #             in_stock = True
+
+    #         parts.append(
+    #             Part(
+    #                 name=name,
+    #                 type=type,
+    #                 image_urls=[image_url],
+    #                 url=url,
+    #                 cheapest_price=cheapest_price,
+    #                 in_stock=in_stock,
+    #                 vendors=None,
+    #                 rating=rating,
+    #                 specs=specs,
+    #                 reviews=None,
+    #             )
+    #         )
+
+    #     pagination = html.find("#module-pagination", first=True)
+
+    #     try:
+    #         current_page = int(pagination.find(".pagination--current", first=True).text)
+    #         total_pages = int(pagination.find("li:last-child", first=True).text)
+    #     except AttributeError:
+    #         current_page = 0
+    #         total_pages = 0
+
+    #     return PartSearchResult(parts=parts, page=current_page, total_pages=total_pages)

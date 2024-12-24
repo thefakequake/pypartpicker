@@ -67,6 +67,20 @@ class Client:
         res = self.__get_response(url)
         return self.__scraper.parse_reviews(res)
 
+    # def get_parts(
+    #     self,
+    #     product_path: str,
+    #     page: int = 1,
+    #     region: Optional[str] = None,
+    #     compatible_with: Optional[str] = None,
+    # ) -> PartSearchResult:
+    #     url = self.__scraper.prepare_parts_url(
+    #         product_path, page, region, compatible_with
+    #     )
+    #     res = self.__get_response(url)
+    #     res.html.render()
+    #     return self.__scraper.parse_parts(res)
+
 
 class AsyncClient:
     def __init__(

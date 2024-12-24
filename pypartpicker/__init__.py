@@ -1,5 +1,6 @@
 from .types import *
 from .client import *
+from .urls import *
 
 
 class Scraper:

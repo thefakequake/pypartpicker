@@ -4,34 +4,34 @@ A PCPartPicker data extractor for Python.
 
 ### Features:
 
-- Fetch product specs, prices and ratings
+- Fetch product information, specs, pricing and reviews
 - Fetch part lists
-- Supports all PCPartPicker regions
-- Cloudflare bypass with Puppeteer
+- Utilise PCPartPicker's built in search functionality
+- Scraping countermeasures out of the box via [requests-html](https://github.com/psf/requests-html>)
+- Support for all regions
+- Customisable scraping
 
 # Installation
 
-```
-> git clone -b 2.0 https://github.com/thefakequake/pypartpicker
+```bash
+$ pip install pypartpicker
 ```
 
 # Note
 
-Your first use of the library may install a chromium browser due to Puppeteer.
+Due to [pyppeteer](https://github.com/pyppeteer/pyppeteer) your first use of the library may install a chromium browser for JS rendering.
 
 This is only done once.
 
-# Example
+# Examples
 
 Fetch a product:
 
 ```py
-from pypartpicker import Client
+import pypartpicker
 
-client = Client()
-part = client.get_part(
-    "https://pcpartpicker.com/product/fN88TW/amd-ryzen-7-5800xt-38-ghz-8-core-processor-100-100001582box"
-)
+pcpp = pypartpicker.Client()
+part = pcpp.get_part("https://pcpartpicker.com/product/fN88TW")
 
 for spec, value in part.specs.items():
     print(f"{spec}: {value}")
@@ -42,13 +42,13 @@ print(part.cheapest_price)
 Search parts with pagination:
 
 ```py
-from pypartpicker import Client
+import pypartpicker
 
-client = Client()
+pcpp = pypartpicker.Client()
 page = 1
 
 while True:
-    result = client.get_part_search("ryzen 5", region="uk", page=page)
+    result = pcpp.get_part_search("ryzen 5", region="uk", page=page)
 
     for part in result.parts:
         print(part.name)
@@ -58,22 +58,278 @@ while True:
         break
 ```
 
-# Async Example
+Fetch a product (async):
 
 ```py
-from pypartpicker import AsyncClient
+import pypartpicker
 import asyncio
 
 
 async def get_parts():
-    async with AsyncClient() as client:
-        part = await client.get_part(
-            "https://pcpartpicker.com/product/fN88TW/amd-ryzen-7-5800xt-38-ghz-8-core-processor-100-100001582box"
-        )
+    async with pypartpicker.AsyncClient() as pcpp:
+        part = await pcpp.get_part("https://pcpartpicker.com/product/fN88TW")
 
     for spec, value in part.specs.items():
         print(f"{spec}: {value}")
 
 
 asyncio.run(get_parts())
+```
+
+# Documentation
+
+<h2 id="client">Client</h2>
+
+Represents a client for interacting with parts-related data and making HTTP requests.
+
+### Options
+
+- **`max_retries`**: `int` – The maximum number of retries for requests. Default is `3`.
+- **`retry_delay`**: `int` – The delay between retries in seconds. Default is `0`.
+- **`cookies`**: `Optional[dict]` – Cookies to include in requests.
+- **`response_retriever`**: `Optional[Callable]` – A custom function to retrieve responses. Must be callable.
+
+---
+
+### Methods
+
+#### `get_part(id_url: str, region: str = None) -> Part`
+
+Fetches a single part by its URL/ID and region.
+
+- **Parameters**:
+
+  - **`id_url`**: `str` – The part ID or URL of the part to retrieve.
+  - **`region`**: `Optional[str]` – The region for the part data.
+
+- **Returns**: [`Part`](#part) – The part details.
+
+---
+
+#### `get_part_list(id_url: str, region: str = None) -> PartList`
+
+Fetches a part list by its URL/ID and region.
+
+- **Parameters**:
+
+  - **`id_url`**: `str` – The part list ID or URL of the part list to retrieve.
+  - **`region`**: `Optional[str]` – The region for the part list data.
+
+- **Returns**: [`PartList`](#part-list) – The part list details.
+
+---
+
+#### `get_part_search(query: str, page: int = 1, region: Optional[str] = None) -> PartSearchResult`
+
+Searches for parts using PCPartPicker's search functionality.
+
+- **Parameters**:
+
+  - **`query`**: `str` – The search query string.
+  - **`page`**: `int` – The page number to fetch. Default is `1`.
+  - **`region`**: `Optional[str]` – The region for the search results.
+
+- **Returns**: [`PartSearchResult`](#part-search-result) – The search results for parts.
+
+---
+
+#### `get_part_reviews(id_url: str, page: int = 1, rating: Optional[int] = None) -> PartReviewsResult`
+
+Fetches reviews for a specific part.
+
+- **Parameters**:
+
+  - **`id_url`**: `str` – The part ID or URL of the part to retrieve reviews for.
+  - **`page`**: `int` – The page number to fetch. Default is `1`.
+  - **`rating`**: `Optional[int]` – Filter reviews by a specific star rating.
+
+- **Returns**: [`PartReviewsResult`](#part-reviews-result) – The reviews for the specified part.
+
+---
+<!-- 
+#### `get_parts(product_path: str, page: int = 1, region: Optional[str] = None, compatible_with: Optional[str] = None) -> PartSearchResult`
+
+Fetches parts of a specific product type.
+
+- **Parameters**:
+
+  - **`product_path`**: `str` – The [product path](#product-path) to retrieve parts for.
+  - **`page`**: `int` – The page number to fetch. Default is `1`.
+  - **`region`**: `Optional[str]` – The region for the part data.
+  - **`compatible_with`**: `Optional[str]` – Filter by compatibility with a specific part URL/ID.
+
+- **Returns**: [`PartSearchResult`](#part-search-result) – The parts matching the query. -->
+
+### Exceptions
+
+- **`CloudflareException`** – Raised when the request fails due to Cloudflare protection after the maximum retries.
+- **`RateLimitException`** – Raised when the request encounters a PCPartPicker rate limit issue.
+
+---
+
+<h2 id="client">AsyncClient</h2>
+
+Same methods and options as Client except called with `await`.
+
+## Types
+
+<h3 id="price">Price</h3>
+
+Represents the pricing details of a product.
+
+- **`base`**: `Optional[float]` – The base price of the item.
+- **`discounts`**: `Optional[float]` – Any discounts applied to the item.
+- **`shipping`**: `Optional[float]` – Shipping costs associated with the item.
+- **`tax`**: `Optional[float]` – Taxes applied to the item.
+- **`total`**: `Optional[float]` – The total price after applying all factors.
+- **`currency`**: `Optional[str]` – The currency of the price.
+
+---
+
+<h3 id="vendor">Vendor</h3>
+
+Represents a vendor offering a product.
+
+- **`name`**: `str` – The name of the vendor.
+- **`logo_url`**: `str` – The URL to the vendor's logo image.
+- **`in_stock`**: `bool` – Whether the product is in stock.
+- **`price`**: [`Price`](#price) – The price details for the product.
+- **`buy_url`**: `str` – The URL to purchase the product from the vendor.
+
+---
+
+<h3 id="rating">Rating</h3>
+
+Represents the rating of a product.
+
+- **`stars`**: `int` – The number of stars given by reviewers.
+- **`count`**: `int` – The total number of ratings received.
+- **`average`**: `float` – The average rating value.
+
+---
+
+<h3 id="user">User</h3>
+
+Represents a user who interacts with reviews.
+
+- **`username`**: `str` – The username of the user.
+- **`avatar_url`**: `str` – The URL to the user's avatar image.
+- **`profile_url`**: `str` – The URL to the user's profile.
+
+---
+
+<h3 id="review">Review</h3>
+
+Represents a review for a product.
+
+- **`author`**: [`User`](#user) – The user who wrote the review.
+- **`points`**: `int` – The number of points given to the review.
+- **`stars`**: `int` – The star rating given in the review.
+- **`created_at`**: `str` – The timestamp when the review was created.
+- **`content`**: `str` – The textual content of the review.
+- **`build_name`**: `Optional[str]` – The name of the build associated with the review.
+- **`build_url`**: `Optional[str]` – The URL to the build associated with the review.
+
+---
+
+<h3 id="part-reviews-result">PartReviewsResult</h3>
+
+Represents the result of a paginated query for part reviews.
+
+- **`reviews`**: `list` of [`Review`](#review) – A list of reviews for a product.
+- **`page`**: `int` – The current page of results.
+- **`total_pages`**: `int` – The total number of pages available.
+
+---
+
+<h3 id="part">Part</h3>
+
+Represents an individual part of a system or build.
+
+- **`name`**: `str` – The name of the part.
+- **`type`**: `str` – The type or category of the part.
+- **`image_urls`**: `Optional[list[str]]` – A list of URLs to images of the part.
+- **`url`**: `Optional[str]` – The URL for more details about the part.
+- **`cheapest_price`**: `Optional` of [`Price`](#price) – The cheapest price for the part.
+- **`in_stock`**: `Optional[bool]` – Whether the part is currently in stock.
+- **`vendors`**: `Optional[list` of [`Vendor`](#vendor)`]` – A list of vendors offering the part.
+- **`rating`**: `Optional` of [`Rating`](#rating) – The rating details for the part.
+- **`specs`**: `Optional[dict[str, str]]` – A dictionary of specifications for the part.
+- **`reviews`**: `Optional[list` of [`Review`](#review)`]` – A list of reviews for the part.
+
+---
+
+<h3 id="part-list">PartList</h3>
+
+Represents a list of parts for a system or build.
+
+- **`parts`**: `list` of [`Part`](#part) – A list of parts in the build.
+- **`url`**: `str` – The URL for the part list.
+- **`estimated_wattage`**: `float` – The power consumption of the build, measured in watts.
+- **`total_price`**: `float` – The total price of the build.
+- **`currency`**: `str` – The currency used for pricing.
+
+---
+
+<h3 id="part-search-result">PartSearchResult</h3>
+
+Represents the result of a paginated query for parts.
+
+- **`parts`**: `list` of [`Part`](#part) – A list of parts matching the search query.
+- **`page`**: `int` – The current page of results.
+- **`total_pages`**: `int` – The total number of pages available.
+
+<h2 id="regions">Supported Regions</h2>
+
+- **Australia**: `au`
+- **Austria**: `at`
+- **Belgium**: `be`
+- **Canada**: `ca`
+- **Czech Republic**: `cz`
+- **Denmark**: `dk`
+- **Finland**: `fi`
+- **France**: `fr`
+- **Germany**: `de`
+- **Hungary**: `hu`
+- **Ireland**: `ie`
+- **Italy**: `it`
+- **Netherlands**: `nl`
+- **New Zealand**: `nz`
+- **Norway**: `no`
+- **Portugal**: `pt`
+- **Romania**: `ro`
+- **Saudi Arabia**: `sa`
+- **Slovakia**: `sk`
+- **Spain**: `es`
+- **Sweden**: `se`
+- **United Kingdom**: `uk`
+- **United States**: `us`
+
+<h2 id="product-path">Supported Product Types</h2>
+
+```py
+PRODUCT_KEYBOARD_PATH = "keyboard"
+PRODUCT_SPEAKERS_PATH = "speakers"
+PRODUCT_MONITOR_PATH = "monitor"
+PRODUCT_THERMAL_PASTE_PATH = "thermal-paste"
+PRODUCT_VIDEO_CARD_PATH = "video-card"
+PRODUCT_CASE_FAN_PATH = "case-fan"
+PRODUCT_OS_PATH = "os"
+PRODUCT_CPU_COOLER_PATH = "cpu-cooler"
+PRODUCT_FAN_CONTROLLER_PATH = "fan-controller"
+PRODUCT_UPS_PATH = "ups"
+PRODUCT_WIRED_NETWORK_CARD_PATH = "wired-network-card"
+PRODUCT_MEMORY_PATH = "memory"
+PRODUCT_HEADPHONES_PATH = "headphones"
+PRODUCT_SOUND_CARD_PATH = "sound-card"
+PRODUCT_INTERNAL_HARD_DRIVE_PATH = "internal-hard-drive"
+PRODUCT_MOUSE_PATH = "mouse"
+PRODUCT_WIRELESS_NETWORK_CARD_PATH = "wireless-network-card"
+PRODUCT_POWER_SUPPLY_PATH = "power-supply"
+PRODUCT_WEBCAM_PATH = "webcam"
+PRODUCT_MOTHERBOARD_PATH = "motherboard"
+PRODUCT_EXTERNAL_HARD_DRIVE_PATH = "external-hard-drive"
+PRODUCT_OPTICAL_DRIVE_PATH = "optical-drive"
+PRODUCT_CASE_PATH = "case"
+PRODUCT_CPU_PATH = "cpu"
 ```
