@@ -24,7 +24,7 @@ class Price:
     def __str__(self):
         if self.currency is None:
             return "<No Prices Available>"
-        return self.currency + str(self.total)
+        return f"{self.currency}{self.total:.02f}"
 
 
 class Vendor:
