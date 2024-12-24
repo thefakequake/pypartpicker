@@ -90,7 +90,7 @@ class Scraper:
         thumbnails = sidebar.find(".product__image-2024-thumbnails", first=True)
         if thumbnails is None:
             image_urls.append(
-                "https"
+                "https:"
                 + sidebar.find(".product__image-2024 img", first=True).attrs["src"]
             )
         else:
