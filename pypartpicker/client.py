@@ -1,3 +1,4 @@
+import asyncio
 from .scraper import Scraper
 from .types import Part, PartList, PartSearchResult, PartReviewsResult
 from .errors import CloudflareException, RateLimitException
@@ -9,13 +10,19 @@ import time
 
 class Client:
     def __init__(
-        self, max_retries=3, retry_delay=0, response_retriever=None, cookies=None
+        self,
+        max_retries=3,
+        retry_delay=0,
+        response_retriever=None,
+        no_js=False,
+        cookies=None,
     ):
         self.__scraper = Scraper()
         self.__session = HTMLSession()
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.cookies = cookies
+        self.no_js = no_js
 
         self.__get_response = (
             response_retriever
@@ -33,11 +40,14 @@ class Client:
 
         # Check if we are being Cloudflare checked
         if self.__scraper.is_cloudflare(res):
+            if self.no_js:
+                return self.__default_response_retriever(url, self.max_retries)
+
             res.html.render()
 
             if self.__scraper.is_cloudflare(res):
                 time.sleep(self.retry_delay)
-                return self.__get_response(url, retries + 1)
+                return self.__default_response_retriever(url, retries + 1)
         elif self.__scraper.is_rate_limit(res):
             raise RateLimitException(f"PCPP rate limit encountered: {url}")
 
@@ -84,13 +94,19 @@ class Client:
 
 class AsyncClient:
     def __init__(
-        self, max_retries=3, retry_delay=0, response_retriever=None, cookies=None
+        self,
+        max_retries=3,
+        retry_delay=0,
+        response_retriever=None,
+        cookies=None,
+        no_js=False,
     ):
         self.__scraper = Scraper()
         self.__session = None
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.cookies = cookies
+        self.no_js = no_js
 
         self.__get_response = (
             response_retriever
@@ -117,11 +133,14 @@ class AsyncClient:
 
         # Check if we are being Cloudflare checked
         if self.__scraper.is_cloudflare(res):
+            if self.no_js:
+                return await self.__default_response_retriever(url, self.max_retries)
+
             await res.html.arender()
 
             if self.__scraper.is_cloudflare(res):
-                time.sleep(self.retry_delay)
-                return self.__get_response(url, retries + 1)
+                asyncio.sleep(self.retry_delay)
+                return await self.__default_response_retriever(url, retries + 1)
         elif self.__scraper.is_rate_limit(res):
             raise RateLimitException(f"PCPP rate limit encountered: {url}")
 

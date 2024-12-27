@@ -94,6 +94,38 @@ async def get_parts():
 asyncio.run(get_parts())
 ```
 
+Proxy rotation w/ response_retriever override:
+
+```py
+import pypartpicker
+import requests_html
+from itertools import cycle
+
+# replace with own list of proxies
+list_proxy = [
+    "socks5://Username:Password@IP1:20000",
+    "socks5://Username:Password@IP2:20000",
+    "socks5://Username:Password@IP3:20000",
+    "socks5://Username:Password@IP4:20000",
+]
+
+proxy_cycle = cycle(list_proxy)
+session = requests_html.HTMLSession()
+
+
+def response_retriever(url):
+    proxy = next(proxy_cycle)
+    return session.get(url, proxies={"http": proxy, "https": proxy})
+
+
+client = pypartpicker.Client(response_retriever=response_retriever)
+
+res = client.get_part_search("cpu")
+for result in res.parts:
+    part = client.get_part(result.url)
+    print(part.specs)
+```
+
 # Documentation
 
 <h2 id="client">Client</h2>
@@ -105,8 +137,9 @@ Represents a client for interacting with parts-related data and making HTTP requ
 - **`max_retries`**: `int` – The maximum number of retries for requests. Default is `3`.
 - **`retry_delay`**: `int` – The delay between retries in seconds. Default is `0`.
 - **`cookies`**: `Optional[dict]` – Cookies to include in requests.
-- **`response_retriever`**: `Optional[Callable]` – A custom function to perform a request, overriding the default one. 
-Can be used to implement proxy rotation and custom scraping measures.
+- **`response_retriever`**: `Optional[Callable]` – A custom function to perform a request, overriding the default one.
+  Can be used to implement proxy rotation and custom scraping measures.
+- **`no_js`**: `bool` – Disables pyppeteer JS rendering. Default is `False`.
 
 ---
 
