@@ -441,7 +441,7 @@ class Scraper:
 
     def prepare_search_url(self, query: str, page: int, region: Optional[str] = "us"):
         return (
-            self.__get_base_url(region)
+            self.__get_base_url("us" if region is None else region)
             + SEARCH_PATH
             + f"?q={urllib.parse.quote(query)}&page={page}"
         )

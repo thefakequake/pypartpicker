@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypartpicker"
-version = "2.0.2"
+version = "2.0.3"
 description = "A PCPartPicker data extractor for Python."
 authors = ["QuaKe"]
 readme = "README.md"
