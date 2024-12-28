@@ -248,7 +248,7 @@ Represents a vendor offering a product.
 - **`logo_url`**: `str` – The URL to the vendor's logo image.
 - **`in_stock`**: `bool` – Whether the product is in stock.
 - **`price`**: [`Price`](#price) – The price details for the product.
-- **`buy_url`**: `str` – The URL to purchase the product from the vendor.
+- **`buy_url`**: `str` – The vendor URL to purchase the product.
 
 ---
 
@@ -298,12 +298,12 @@ Represents the result of a paginated query for part reviews.
 
 <h3 id="part">Part</h3>
 
-Represents an individual part of a system or build.
+Represents a part from a product page, part list or search page.
 
 - **`name`**: `str` – The name of the part.
 - **`type`**: `str` – The type or category of the part.
-- **`image_urls`**: `Optional[list[str]]` – A list of URLs to images of the part.
-- **`url`**: `Optional[str]` – The URL for more details about the part.
+- **`image_urls`**: `Optional[list[str]]` – Image URLs of the part.
+- **`url`**: `Optional[str]` – The part's main product URL.
 - **`cheapest_price`**: `Optional` of [`Price`](#price) – The cheapest price for the part.
 - **`in_stock`**: `Optional[bool]` – Whether the part is currently in stock.
 - **`vendors`**: `Optional[list` of [`Vendor`](#vendor)`]` – A list of vendors offering the part.
@@ -317,7 +317,7 @@ Represents an individual part of a system or build.
 
 Represents a list of parts for a system or build.
 
-- **`parts`**: `list` of [`Part`](#part) – A list of parts in the build.
+- **`parts`**: `list` of [`Part`](#part) – A list of parts in the build (only partial data).
 - **`url`**: `str` – The URL for the part list.
 - **`estimated_wattage`**: `float` – The power consumption of the build, measured in watts.
 - **`total_price`**: `float` – The total price of the build.
@@ -329,7 +329,7 @@ Represents a list of parts for a system or build.
 
 Represents the result of a paginated query for parts.
 
-- **`parts`**: `list` of [`Part`](#part) – A list of parts matching the search query.
+- **`parts`**: `list` of [`Part`](#part) – A list of parts matching the search query (only partial data).
 - **`page`**: `int` – The current page of results.
 - **`total_pages`**: `int` – The total number of pages available.
 
