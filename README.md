@@ -28,6 +28,7 @@ A PCPartPicker data extractor for Python.
   - [User](#user)
   - [Supported Regions](#regions)
   - [Supported Product Types](#types)
+- [FAQs](#faqs)
 
 # Installation
 
@@ -39,7 +40,7 @@ $ pip install pypartpicker
 
 Due to [pyppeteer](https://github.com/pyppeteer/pyppeteer) your first use of the library may install a chromium browser for JS rendering.
 
-This is only done once.
+This is only done once. If you would like to disable this feature entirely, use the `no_js=True` option in the Client constructor.
 
 # Examples
 
@@ -386,7 +387,7 @@ PRODUCT_OPTICAL_DRIVE_PATH = "optical-drive"
 PRODUCT_CASE_PATH = "case"
 PRODUCT_CPU_PATH = "cpu"
 ```
-<h2 id="faqs">FAQS</h2>
+<h2 id="faqs">FAQs</h2>
 
 **Chromium Errors**
 
