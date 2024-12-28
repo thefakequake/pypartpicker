@@ -386,3 +386,8 @@ PRODUCT_OPTICAL_DRIVE_PATH = "optical-drive"
 PRODUCT_CASE_PATH = "case"
 PRODUCT_CPU_PATH = "cpu"
 ```
+<h2 id="faqs">FAQS</h2>
+
+**Chromium Errors**
+
+If `[INFO]: Downloading Chromium` errors are encountered, find your `__init__.py` file located in `C:\Users\yourusername\AppData\Local\Programs\Python\Python3XX\Lib\site-packages\pyppeteer`, and edit line 20 from `__chromium_revision__ = '1181205'` to `__chromium_revision__ = '1263111'`
