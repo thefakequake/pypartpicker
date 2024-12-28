@@ -80,7 +80,8 @@ class Scraper:
 
         # Specs
         specs = {}
-        for spec in sidebar.find(".group--spec"):
+        specs_block = sidebar.find(".specs", first=True)
+        for spec in specs_block.find(".group--spec"):
             spec_title = spec.find(".group__title", first=True).text
             spec_value = spec.find(".group__content", first=True).text
             specs[spec_title] = spec_value
