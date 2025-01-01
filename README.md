@@ -99,7 +99,7 @@ Proxy rotation w/ response_retriever override:
 
 ```py
 import pypartpicker
-import requests_html
+import requests_html # requires requests-html and pysocks to be installed
 from itertools import cycle
 
 # replace with own list of proxies
