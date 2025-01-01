@@ -392,3 +392,8 @@ PRODUCT_CPU_PATH = "cpu"
 **Chromium Errors**
 
 If `[INFO]: Downloading Chromium` errors are encountered, find your `__init__.py` file located in `C:\Users\yourusername\AppData\Local\Programs\Python\Python3XX\Lib\site-packages\pyppeteer`, and edit line 20 from `__chromium_revision__ = '1181205'` to `__chromium_revision__ = '1263111'`
+
+
+**Socks Support Errors**
+
+You will not be able to use the "Proxy rotation w/ response_retriever override" method without first installing SOCKS using `pip install PySocks`
