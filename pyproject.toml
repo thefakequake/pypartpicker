@@ -4,6 +4,7 @@ version = "2.0.5"
 description = "A PCPartPicker data extractor for Python."
 authors = ["QuaKe"]
 readme = "README.md"
+license = {file = "LICENSE"}
 homepage = "https://github.com/thefakequake/pypartpicker"
 repository = "https://github.com/thefakequake/pypartpicker"
 keywords = ["pcpartpicker", "pcpp", "scraping"]
